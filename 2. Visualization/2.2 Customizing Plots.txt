@@ -1,0 +1,493 @@
+
+Layers
+
+To add layers, we use the symbol plus.
+
+DATA %>% ggplot() + LAYER 1 + LAYER 2 + ... + LAYER N
+
+Geometry: 
+geom_<type of map>()
+geom_point()
+?geom_point()
+
+aes : aesthetic mapping function
+
+To produce a scatterplot of total learners versus population in millions:
+> murders %>% ggplot() + 
++	geom_point(aes(x = population/10^6, y = total))
+
+Add layers to previously defined objects:
+> p <- ggplot(data = murders)
+> p + geom_point(aes(x = population/10^6, y = total))
+
+aes recognizes variable names from the data object.
+
+now add a labbel to each point:
+geom_label() - adds label with a little rectangle
+geom_text() - simply adds the text
+> p + geom_point(aes(x = population/10^6, y = total)) +
++	geom_text(aes(population/10^6, total, label = abb))
+
+------------------------------------------------------------------------------------------------------
+
+Tinkering
+
+The plot we wish to make, the points are larger than the default ones.
+> p + geom_point(aes(x = population/10^6, y = total) size = 3) +
++	geom_text(aes(population/10^6, total, label = abb))
+
+Now that the points are larger, we cna't read the label. now nudge the label slightly to the right
+> p + geom_point(aes(x = population/10^6, y = total) size = 3) +
++	geom_text(aes(population/10^6, total, label = abb), nudge_x = 1)
+
+Global aes : to avoid mapping populating and total to the points twice, once for each geometry.
+
+ggplot contains an argument that permits us to define the aesthetic mappings:
+> args(ggplot)
+
+Now define the mapping inside the ggplot function
+> murders %>% ggplot(aes(population/10^6, total, label = abb))
+> p + geom_point(size = 3) + geom_text(nudge_x = 1.5)
+
+local mappings override the global one:
+> p + geom_point(size = 3) + geom_text(aes(x = 10, y = 800, label = "hello there!")
+
+
+------------------------------------------------------------------------------------------------------
+
+Scales, labels, and colors
+
+scale_x_continuous() - use this to edit the behavor of scales (ex: put the scales in the log scale)
+
+> p + geom_point(size = 3) + 
++	geom_text(nudge_x = 1.5) +
++	scale_x_continuous(trans = "log10") +
++	scale_y_continuous(trans = "log10")
+
+Note that because we are in the log scale, the nudge needs to be made smaller:
+
+> p + geom_point(size = 3) + 
++	geom_text(nudge_x = 0.075) +
++	scale_x_continuous(trans = "log10") +
++	scale_y_continuous(trans = "log10")
+
+since log10 is so common, ggplot has specialized function for this:
+
+> p + geom_point(size = 3) + 
++	geom_text(nudge_x = 0.075) +
++	scale_x_log10() +
++	scale_y_log10()
+
+
+To add labels and titles:
+
+> p + geom_point(size = 3) + 
++	geom_text(nudge_x = 0.075) +
++	scale_x_log10() +
++	scale_y_log10() +
++	xlab("Populations in millions (log scale)") +
++	ylab("Total number of murders (log scale)") +
++	ggtitle("US Gun Murders in US 2010")
+
+To add color:
+> p + geom_point(size = 3, color = "blue")
+
+But we want the color to be associated with their geographical region.
+> p + geom_point(aes(col=region), size = 3)
+
+Now add a line that represents the average murder rate for the entire country.
+Note that once we determine the per million rate to be r for the entire country, this line is defined by the 
+formula y equals rx.  Because if a state has a population x and it has the same murder rate as the US,
+which is r, we simply multiply r by x to get the total number of murders.
+
+y = r*x
+
+{total number of murders} = {rate} * {state population}
+
+
+To compute the average rate for the entire country:
+Add up all the totals, add up all the populations, and then take the ratio of these two.
+We use the summarize function to do this:
+> r <- murders %>%
++	summarize(rate = sum(total) / sum(population) * 10^6) %>% .$rate
+
+To add a line:
+default is slope = 1, intercept = 0
+So we only need to define the intercept
+> p + geom_point(aes(col=region), size = 3) +
++	geom_abline(intercept = log10(r))
+
+change from solid to dash, black to grey and draw line before the points
+> p <- p +
++	geom_abline(intercept = log10(r), lty = 2, color = "darkgrey") +
++	geom_point(aes(col=region), size = 3)
+
+lty is the line type
+and we have defined the geom_abline BEFORE geom_point
+
+
+To captitalize the word "Region" in the legend use the scale_color_discrete function.
+> p <- p + scale_color_discrete(name = "Region")
+
+
+------------------------------------------------------------------------------------------------------
+
+Add-on Packages
+
+ggthemes and ggrepel packages
+
+Most of the plots in this series are included in the DS labs package:
+> ds_theme_set()
+
+theme_economist
+
+load the library and add a layer
+>library(ggthemes)
+>p + theme_economist()
+
+or try this:
+>library(ggthemes)
+>p + theme_fivethirtyeight()
+
+Now to make sure the labels don't fall on top of each other, change the geom_text layer with the 
+geom_text_repel layer after loading the ggrepel package. 
+
+Let's start from the beginning:
+>library(ggthemes)
+>library(ggrepel)
+> ## First define the slope of the line
+> r <- murders %>% 
++	summarize(rate = sum(total)/ sum(population) * 10^6) %>% .$rate
+> ## Now make the plot
+> murders %>% ggplot(aes(population/10^6, total, label = abb)) +
++	geom_abline(intercept = log10(r), lty = 2, color = "darkgrey") +
++	geom_point(aes(col=region), size = 3) +
++	geom_text_repel() +
++	scale_x_log10() +
++	scale_y_log10() +
++	xlab("Populations in millions (log scale)") +
++	ylab("Total number of murders (log scale)") +
++	ggtitle("US Gun Murders in US 2010") +
++	scale_color_discrete(name = "Region") +
++	theme_economist()
+
+
+------------------------------------------------------------------------------------------------------
+
+Other Examples
+
+Histogram:
+
+Filter the heights to only include the males
+> heights %>% filter(sex=="Male")
+
+> p <- heights %>%
++	filter(sex="Male") %>%
++	ggplot(aes(x = height))
+> p + geom_histogram()
+
+To pick a better bin:
+> p + geom_histogram(binwidth = 1)
+
+To change color and add a title:
+> p + geom_histogram(binwidth = 1, fill = "blue", col = "black") +
++	xlab("Male heights in inches") +
++	ggtitle("Histogram")
+
+
+Density:
+
+Instead of adding a histogram layer, we add a geom_density layer:
+> p + geom_density()
+
+
+
+Q-Q plot:
+geom_qq
+We need to specify the sample argument.  We will learn about samples later.
+> p <- heights %>% filter(sex=="Male") %>%
++	ggplot(aes(sample = height))
+> p + geom_qq()
+
+By default, the Q-Q plot is compared to the normal distribution with average zero and standard deviation one.
+to change this:
+> params <- heights %>%
++	filter(sex=="Male") %>%
++	summarize(mean = mean(height), sd = sd(height))
+> p + geom_qq(dparams = params)
+
+To add identity line:
+> p + geom_qq(dparams = params) +
++	geom_abline()
+
+We can see that the points falls roughtly on the line. This means the data is approximately normal.
+
+Another option here is to first scale the data so that we have them in standard units and plot it agains the
+standard normal distribution.
+This saves us the step of having to computer the mean and standard deviation.
+> p <- heights %>% filter(sex=="Male") %>%
++	ggplot(aes(sample = scale(height))) +
++ 	geom_qq() +
++	geom_abline()
+
+
+To make grids of plots:
+First we need to define plots and assign them to objects:
+> p <- heights %>% filter(sex=="Male") %>% ggplot(aes(x = height))
+> p1 <- p + geom_histogram(binwidth = 1, fill = "blue", col = "black")
+> p2 <- p + geom_histogram(binwidth = 2, fill = "blue", col = "black")
+> p3 <- p + geom_histogram(binwidth = 3, fill = "blue", col = "black")
+
+We have create three different histograms then to show them next to each other:
+>library(gridExtra)
+>grid.arrange(p1,p2,p3, ncol=3)
+
+--------------------------------------------------------------------------------------------
+
+Assessment
+
+library(dplyr)
+library(ggplot2)
+library(dslabs)
+data(heights)
+data(murders)
+p <- ggplot(murders)
+class(p)
+
+
+
+data(heights)
+# define ggplot object called p like in the previous exercise but using a pipe 
+p <- heights %>% ggplot()
+
+
+names(murders)
+total and population
+
+
+
+To create a scatter plot, we add a layer with the function geom_point. The aesthetic mappings require us to define
+the x-axis and y-axis variables respectively. So the code looks like this:
+
+murders %>% ggplot(aes(x = , y = )) +
+  geom_point()
+except we have to fill in the blanks to define the two variables x and y.
+Fill out the sample code with the correct variable names to plot total murders versus population size.
+## Fill in the blanks
+## Fill in the blanks
+murders %>% ggplot(aes(x = population, y = total)) +
+  geom_point()
+  
+  
+  
+Note that if we don't use argument names, we can obtain the same plot by making sure we enter the variable names in the desired order:
+
+murders %>% ggplot(aes(population, total)) +
+  geom_point()
+  
+Remake the plot but flip the axes so that total is on the x-axis and population is on the y-axis.
+murders %>% ggplot(aes(total,population)) +
+  geom_point()
+  
+  
+  
+If instead of points we want to add text, we can use the geom_text() or geom_label() geometries. However, note that the following code
+
+murders %>% ggplot(aes(population, total)) +
+  geom_label()
+will give us the error message: Error: geom_label requires the following missing aesthetics: label
+
+Why is this?
+We need to map a character to each point through the label argument in aes
+
+
+
+
+Rewrite the code from the previous exercise to add the state abbreviation as the label through aes.
+library(dplyr)
+library(ggplot2)
+library(dslabs)
+data(murders)
+## edit the next line to add the label
+murders %>% ggplot(aes(population, total)) +
+  geom_point() + geom_label(aes(label=abb))
+  
+  
+  
+Now let's change the color of the labels to blue. How can we do this?
+By using the color argument in geom_label because we want all colors to be blue so we do not need to map colors
+
+
+
+Now let's go ahead and make the labels blue. We previously wrote this code to add labels to our plot:
+
+murders %>% ggplot(aes(population, total, label= abb)) +
+  geom_label()
+Now we will edit this code.
+Rewrite the code above to make the labels blue by adding an argument to geom_label.
+murders %>% ggplot(aes(population, total,label= abb)) +
+  geom_label(color="blue")
+  
+  
+  
+Now suppose we want to use color to represent the different regions. So the states from the West will be one 
+color, states from the Northeast another, and so on. In this case, which of the following is most appropriate:
+Mapping the colors through the color argument of aes because each label needs a different color
+
+
+
+We previously used this code to make a plot using the state abbreviations as labels:
+
+murders %>% ggplot(aes(population, total, label = abb)) +
+  geom_label()
+We are now going to add color to represent the region.
+Rewrite the code above to make the label color correspond to the state's region. Because this is a mapping, 
+you will have to do this through the aes function.
+## edit this code
+murders %>% ggplot(aes(population, total, label = abb, color=region)) +
+  geom_label()
+  
+  
+  
+Now we are going to change the axes to log scales to account for the fact that the population distribution is skewed.
+Let's start by defining an object p that holds the plot we have made up to now:
+
+p <- murders %>% ggplot(aes(population, total, label = abb, color = region)) +
+  geom_label() 
+To change the x-axis to a log scale we learned about the scale_x_log10() function. We can change the axis by adding 
+this layer to the object p to change the scale and render the plot using the following code:
+
+p + scale_x_log10()
+
+Change both axes to be in the log scale. Make sure you do not redefine p - just add the appropriate layers.
+p <- murders %>% ggplot(aes(population, total, label = abb, color = region)) + geom_label()
+## add layers to p here
+p <- murders %>% ggplot(aes(population, total, label = abb, color = region)) + geom_label()
+## add layers to p here
+p + scale_x_log10() + scale_y_log10()
+
+
+
+In the previous exercises we created a plot using the following code:
+
+library(dplyr)
+library(ggplot2)
+library(dslabs)
+data(murders)
+p<- murders %>% ggplot(aes(population, total, label = abb, color = region)) +
+  geom_label()
+p + scale_x_log10() + scale_y_log10()
+We are now going to add a title to this plot. We will do this by adding yet another layer, this time with the 
+function ggtitle.
+Edit the code above to add the title "Gun murder data" to the plot.
+
+p <- murders %>% ggplot(aes(population, total, label = abb, color = region)) +
+  geom_label()
+# add a layer to add title to the next line
+p + scale_x_log10() + 
+    scale_y_log10() +
+    ggtitle("Gun murder data")
+    
+    
+    
+We are going to shift our focus from the murders dataset to explore the heights dataset.
+
+We use the geom_histogram function to make a histogram of the heights in the heights data frame. When reading the 
+documentation for this function we see that it requires just one mapping, the values to be used for the histogram.
+
+What is the variable containing the heights in inches in the heights data frame?
+height
+
+
+
+We are now going to make a histogram of the heights so we will load the heights dataset. The following code has been 
+pre-run for you to load the heights dataset:
+
+library(dplyr)
+library(ggplot2)
+library(dslabs)
+data(heights)
+
+Create a ggplot object called p using the pipe to assign the heights data to a ggplot object.
+Assign height to the x values through the aes function.
+# define p here
+p <- heights %>% ggplot(aes(x = height)) 
+
+
+
+
+Now we are ready to add a layer to actually make the histogram.
+Add a layer to the object p (created in the previous exercise) using the geom_histogram function to make the 
+histogram.
+p <- heights %>% 
+  ggplot(aes(height))
+## add a layer to p
+p + geom_histogram()
+
+
+Use the binwidth argument to change the histogram made in the previous exercise to use bins of size 1 inch.
+p <- heights %>% 
+  ggplot(aes(height))
+## add the geom_histogram layer but with the requested argument
+p <- heights %>% 
+  ggplot(aes(height))
+## add the geom_histogram layer but with the requested argument
+p + geom_histogram(binwidth=1)
+
+
+
+Now instead of a histogram we are going to make a smooth density plot. In this case, we will not make an object p. 
+Instead we will render the plot using a single line of code. In the previous exercise, we could have created a 
+histogram using one line of code like this:
+
+heights %>% 
+  ggplot(aes(height)) +
+  geom_histogram()
+Now instead of geom_histogram we will use geom_density to create a smooth density plot.
+Add the appropriate layer to create a smooth density plot of heights.
+
+## add the correct layer using +
+heights %>% 
+  ggplot(aes(height)) + geom_density()
+  
+  
+  
+Now we are going to make density plots for males and females separately. We can do this using the group argument 
+within the aes mapping. Because each point will be assigned to a different density depending on a variable from 
+the dataset, we need to map within aes.
+
+Create separte smooth density plots for males and females by defining group by sex.
+## add the group argument then a layer with +
+heights %>% 
+  ggplot(aes(height, group=sex)) + geom_histogram() + geom_density()
+  
+  
+In the previous exercise we made the two density plots, one for each sex, using:
+  
+  heights %>% 
+    ggplot(aes(height, group = sex)) + 
+    geom_density()
+We can also assign groups through the color or fill argument. For example, if you type color = sex ggplot knows 
+you want a different color for each sex. So two densities must be drawn. You can therefore skip the group = sex 
+mapping. Using color has the added benefit that it uses color to distinguish the groups.
+Change the density plots from the previous exercise to add color.
+## edit the next line to use color instead of group then add a density layer
+heights %>% 
+  ggplot(aes(height, color=sex)) + geom_histogram() + geom_density()
+  
+  
+  
+We can also assign groups using the fill argument. When using the geom_density geometry, color creates a colored line 
+for the smooth density plot while fill colors in the area under the curve.
+
+We can see what this looks like by running the following code:
+
+heights %>% 
+  ggplot(aes(height, fill = sex)) + 
+  geom_density() 
+However, here the second density is drawn over the other. We can change this by using something called alpha blending.
+Set the alpha parameter to 0.2 in the geom_density function to make this change.
+heights %>% 
+  ggplot(aes(height, fill = sex)) + 
+  geom_density(alpha = 0.2) 
+

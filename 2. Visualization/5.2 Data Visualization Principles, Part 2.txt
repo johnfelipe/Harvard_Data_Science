@@ -1,0 +1,100 @@
+
+Show the Data
+
+Heights for female vs male
+A commonly seen plot used for comparison between groups shows the average and the standard error.
+Standard erros are not the same as standard deviation.
+
+The average of each group is reprented by the top of each bar, and the antenna that we see that expands out is the
+average PLUS two standard errors.
+This graph doesn't give much info to ET.
+
+This ggplot shows more infor by simply showing all the points:
+> heights %>% ggplot(aes(sex, height)) + geom_point()
+
+This plot has limitations as well, can't see all the points (all squished together.
+
+Visualizing the distribution is much more informative.
+There are two ways to improve a plot showing all the points:
+1. Add jitter : adding a small random shift to each point.
+	In this case, adding horizontal jitter minimize points falling on top of each other and doesn't change 
+	the interpretation of the height.
+2. Use alpha blending: making the points somewhat transparent.
+
+----------------------------------------------------------------------------------------------
+
+Ease Comparisons: Use Common Axes
+
+We need to show distributions.
+Keep the axes the same for comparison.
+Align plots - align plots vertical to see horizontal changes, and horizontally to see vertical changes.
+Aligning the plots vertically, helps us see the change when the axes are fixed.
+For box plots, by default box plots move up and down vertically, we should align horizontally.
+Bar plots are useful for showing one number, but not very useful when wanting to describe distributions.
+
+
+----------------------------------------------------------------------------------------------
+
+Consider Transformations
+
+Population size was an example in which we found a log transformation to yield a more informative plot
+because the changes are multiplicative.
+
+The combination of incorrectly using bar plots, when a log transformation is merited, can be particularly distorting.
+
+In the example showing the average population sizes for each continent in 2015, it shows Asia as much more
+populous than other continents.  But following the show-the-data principle, we quickly notice that this
+is due to two very large countries, which we assume are India and China.
+
+
+----------------------------------------------------------------------------------------------
+
+Ease Comparison: Compared Visual Cues Should Be Adjacent
+
+Visual cues to be compared should be accurate.
+
+reorder by year, or even better, use colors.  But what about colorblind people?
+
+> color_blind_friendly_cols <- c("#999999", "#E69F00","#56B4E9", "#009E73","#F0E442","#0072B2","#D55E00","#CC79A7")
+> p1 <- data.frame(x=1:8, y=1:8, col = as.character(1:8)) %>% ggplot(aes(x,y, color = col)) +
+	geom_point(size = 5)
+> p1 + scale_color_manual(values= color_blind_friendly_cols)
+
+By adding some layers and picking the right colors, we can make the use of color blind friendly colors.
+
+
+
+----------------------------------------------------------------------------------------------
+
+Assessment
+
+1.
+Say we are interested in comparing gun homicide rates across regions of the US. We see this plot:
+
+library(dplyr)
+library(ggplot2)
+library(dslabs)
+data("murders")
+murders %>% mutate(rate = total/population*100000) %>%
+  group_by(region) %>%
+  summarize(avg = mean(rate)) %>%
+  mutate(region = factor(region)) %>%
+  ggplot(aes(region, avg)) +
+  geom_bar(stat="identity") +
+  ylab("Murder Rate Average")
+and decide to move to a state in the western region. What is the main problem with this interpretaion?
+
+It does not show all the data. We do not see the variability within a region and it's possible that the safest states are not in the West.
+
+
+2.
+To further investigate whether moving to the western region is a wise decision, let's make a box plot of murder rates by region, showing all points.
+Make a box plot of the murder rates by region.
+Order the regions by their median murder rate.
+Show all of the points on the box plot.
+library(dplyr)
+library(ggplot2)
+library(dslabs)
+data("murders")
+murders <- murders %>% mutate(rate = total/population*100000)  %>% mutate(region = reorder(region, rate, FUN=median))
+murders %>% group_by(region) %>% ggplot(aes(region, rate)) + geom_boxplot() + geom_point()

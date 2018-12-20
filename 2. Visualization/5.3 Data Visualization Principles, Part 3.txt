@@ -1,0 +1,235 @@
+
+Slope Charts
+
+Generally recommend scatterplots, with exception where another type of plot may be more informative is when you
+are comparing variables of the same type but at different time points and for relatively small number
+of comparison.
+
+If comparing life expectancy between 2010 and 2015, we might consider a slope chart.
+
+There's not geometry for slope charts in ggplot2, but we can construct one using geom_lines.
+
+> west <- c("Western Europe", "Northern Europe", "Southern Europe", "Northern America", "Australia and New Zealand")
+> dat <- gapminder %>%
++	filter(year %in% c(2010, 2015) & region %in% west &
++	!is.na(life_expectancy) & population > 10^7)
+> dat %>%
++	mutate(location = ifelse(year == 2010, 1, 2),
++		location = ifelse(year = 2015 & country %in% c("United Kingdom","Portugal"),
++					location + 0.22, location),
++		hjust = ifelse(year == 2010, 1, 0)) %>%
++	mutate(year = as.factor(year)) %>%
++	ggplot(aes(year, life_expectancy, group = country)) +
++	geom_line(aes(color = country), show.legend = FALSE) +
++	geom_text(aes(x = location, label = country, hjust = hjust),
++		show.legend = FALSE) +
++	xlab("") + ylab("Life Expectancy")
+
+In the scatterplot, we have followed the principle use common axes since we are comparing values before and after.
+
+Note that when we have many points, the slope chart stops being useful because it becomes too cluttered, 
+then we would use a scatterplot.
+
+Since what we're interested in is in differences, we should dedicate one of our axes to differences.
+Bland-Altman plot - aka Tow Key Mean Different plot, aka MA plot, shows the difference verses the average.
+
+
+-------------------------------------------------------------------------------------------------------
+
+Encoding a Third Variable
+
+In the example, we encode three more variables, OPEC, membership, region, and population size.
+Note that we encode categorical variables with color hue and shape.
+
+For continuous variables, we can use color, intensity or size.
+
+--------------------------------------------------------------------------------------------------------
+
+Case Study: Vaccines
+
+> data(us_contagious_diseases)
+To look at the structure:
+> str(us_contagious_diseases)
+
+create a temporary object called dat that stores all the measles data.  It includes a per 100,000 rate, orders 
+states by average value of disease, and removes Alaska and Hawaii, since they only became states in the late 50s.
+> the_disease <- "Measles"
+> dat <- us_contagious_diseases %>%
++	filter(!state %in% c("Hawaii","Alaska") & disease == the_disease) %>%
++	mutate(rate = count /population * 10000) %>%
++	mutate(state = reorder(state, rate))
+
+Now plot the measles data for California:
+> dat %>% filter(state == "California") %>%
+	ggplot(aes(year, rate))  +
+	geom_line() + ylab("cases per 10,000") +
+	geom_vline(xintercept=1963, col = "blue")
+We add a vertical line at 1963, since this is when the vaccine was introduced.
+
+When choosing colors to quantify a numeric variable, we choose between two options, sequential and diverging.
+
+Sequential palettes are suited for data that goes from high to low.
+High values are clearly distinguished from the low values.
+examples with the package R color Brewer.
+> library(RColorBrewer)
+> display.brewer.all(type="seq")
+
+Diverging colors are used to represent values that verge from a center.  We put equal emphasis on both ends of
+the data range, higher than the center and lower than the center.
+An example of when we would use a divergent pattern would be if we were to show heights and standard deviations
+away from the average.
+
+In our example, we want to use a sequential palette since there is no meaningful center, just low and high rates.
+
+Geom_tile
+We use square root transformation to avoid having the really high counts dominate the plot.
+> dat %>% ggplot(aes(year, state, fill=rate)) +
++	geom_title(color = "grey50") +
++	scale_x_continuous(expand=c(0,0)) +
++	scale_fill_gradient(colors = brewer.pal(9, "Reds"), trans = "sqrt") +
++	geom_vline(xintercept=1963, col = "blue") +
++	theme_minimal() + theme(panel.grid  element_blank()) +
++	ggtile(the_disease) +
++	ylab("") +
++	xlab("")
+
+However, one limitation of this plot is that is uses color to represent quantity, which we earlier explained
+makes it a bit harder to know exactly how high it is going.
+Position and lengths are better cues.
+
+We can make a version of the plot that shows the values with position.
+> avg <- us_contagious_diseases %>%
++	filter(disease == the_disease) %>% group_by(year) %>%
++	summarize(us_rate = sum(count, na.rm=TRUE)/sum(population, na.rm=TRUE)*10000)
+
+Now using geom_line, we can see the average for all states.
+
+-----------------------------------------------------------------------------------------------------
+
+Avoid Pseudo and Gratuitous 3D plots
+
+Humans are not good at seeing in three dimensions.  Think about how hard it is to parallel park.
+
+The third dimensions does not represent any quantity. It adds nothing, only confusion.
+
+
+-----------------------------------------------------------------------------------------------------
+
+Avoid Too Many Significant Digits
+
+Default in R is to show 7 significant digits.  Too many digits adds no information and makes it hard to understand 
+the message.
+
+For example, reporting positions of up to 0.00001 cases per 10,000, a very small value in the context of the changes
+that are occurring across the dates.  In this case, two significant figures is more
+than enough and makes the point that the rates are decreasing.
+
+signif
+round
+
+Setting this option globally:
+options(digits = n)
+
+
+-----------------------------------------------------------------------------------------------------
+
+Assessment
+
+1.
+The sample code given creates a tile plot showing the rate of measles cases per population. We are going to modify the tile plot to look at smallpox cases instead.
+Modify the tile plot to show the rate of smallpox cases instead of measles cases.
+Exclude years in which cases were reported in fewer than 10 weeks from the plot.
+library(dplyr)
+library(ggplot2)
+library(RColorBrewer)
+library(dslabs)
+data(us_contagious_diseases)
+
+the_disease = "Smallpox"
+dat <- us_contagious_diseases %>% 
+   filter(!state%in%c("Hawaii","Alaska") & disease == the_disease & weeks_reporting >=10) %>% 
+   mutate(rate = count / population * 10000) %>% 
+   mutate(state = reorder(state, rate))
+
+dat %>% ggplot(aes(year, state, fill = rate)) + 
+  geom_tile(color = "grey50") + 
+  scale_x_continuous(expand=c(0,0)) + 
+  scale_fill_gradientn(colors = brewer.pal(9, "Reds"), trans = "sqrt") + 
+  theme_minimal() + 
+  theme(panel.grid = element_blank()) + 
+  ggtitle(the_disease) + 
+  ylab("") + 
+  xlab("")
+  
+  
+2. 
+The sample code given creates a time series plot showing the rate of measles cases per population by state. We are going to again modify this plot to look at smallpox cases instead.
+Modify the sample code for the time series plot to plot data for smallpox instead of for measles.
+Once again, restrict the plot to years in which cases were reported in at least 10 weeks.
+library(dplyr)
+library(ggplot2)
+library(dslabs)
+library(RColorBrewer)
+data(us_contagious_diseases)
+
+the_disease = "Smallpox"
+dat <- us_contagious_diseases %>%
+   filter(!state%in%c("Hawaii","Alaska") & disease == the_disease & weeks_reporting >=10) %>%
+   mutate(rate = count / population * 10000) %>%
+   mutate(state = reorder(state, rate))
+
+avg <- us_contagious_diseases %>%
+  filter(disease==the_disease) %>% group_by(year) %>%
+  summarize(us_rate = sum(count, na.rm=TRUE)/sum(population, na.rm=TRUE)*10000)
+
+dat %>% ggplot() +
+  geom_line(aes(year, rate, group = state),  color = "grey50", 
+            show.legend = FALSE, alpha = 0.2, size = 1) +
+  geom_line(mapping = aes(year, us_rate),  data = avg, size = 1, color = "black") +
+  scale_y_continuous(trans = "sqrt", breaks = c(5,25,125,300)) + 
+  ggtitle("Cases per 10,000 by state") + 
+  xlab("") + 
+  ylab("") +
+  geom_text(data = data.frame(x=1955, y=50), mapping = aes(x, y, label="US average"), color="black") + 
+  geom_vline(xintercept=1963, col = "blue")
+  
+  
+3.  
+Now we are going to look at the rates of all diseases in one state. Again, you will be modifying the sample code to produce the desired plot.
+For the state of California, make a time series plot showing rates for all diseases.
+Include only years with 10 or more weeks reporting.
+Use a different color for each disease.
+library(dplyr)
+library(ggplot2)
+library(dslabs)
+library(RColorBrewer)
+data(us_contagious_diseases)
+
+us_contagious_diseases %>% filter(state=="California" & weeks_reporting >=10) %>% 
+  group_by(year, disease) %>%
+  summarize(rate = sum(count)/sum(population)*10000) %>%
+  ggplot(aes(year, rate, color = disease)) +
+  geom_line() 
+  
+  
+  
+4.
+Now we are going to make a time series plot for the rates of all diseases in the United States. For this exercise, we have provided less sample code - you can take a look at the previous exercise to get you started.
+Compute the US rate by using summarize to sum over states.
+The US rate for each disease will be the total number of cases divided by the total population.
+Remember to convert to cases per 10,000.
+You will need to filter for !is.na(population) to get all the data.
+Plot each disease in a different color.
+library(dplyr)
+library(ggplot2)
+library(dslabs)
+library(RColorBrewer)
+data(us_contagious_diseases)
+us_contagious_diseases %>% 
+  filter(!is.na(population)) %>%
+  group_by(year, disease) %>%
+  summarize(rate = sum(count)/sum(population)*10000) %>%
+  ggplot(aes(year, rate, color = disease)) +
+  geom_line() 
+  
+  

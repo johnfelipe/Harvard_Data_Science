@@ -1,0 +1,80 @@
+Installing packages
+
+Packages are installed in R, not R Studio
+
+To install packages:
+install.packages(c("tidyverse","dslabs"))
+
+To see packages you have installed:
+installed.packages()
+
+
+To run one line at a time, control-enter
+
+To change global settings:
+Go to Tools/Global Options
+uncheck "Restore .Rdata into workspace at startup"
+choose "Never" for "Save workspace to .RData on exit"
+
+In R Studio, config git like this:
+git config --global user.name "Vivien Leung"
+git config --global user.email "countpooky@gmail.com"
+
+To clone a git repository:
+copy url from the repository created in github
+create new projects/version control/git
+put url in Repository URL
+
+
+
+------------------------------------------------------------------------------
+
+Reproducible Reports with R Markdown
+
+R Markdown is a format for what is called literate programming documents.
+It is based on Markdown, a markup language that is widely used to generate HTML pages.
+
+Literate programming weaves instructions, documentation, and detailed comments in between machine-executable code,
+producing a document that describes the program that is best for human understanding.
+Unlike a word processor, such as Microsoft Word, where what you see is what you get, with R Markdown, you need
+to compile the document into the final report. 
+
+knitR is what compilers R Markdown documents. The R Markdown document looks different than the final product.
+This seems like a disadvantage at first, but it is not at all.
+Because for example, instead of producing plots and inserting them one by one into the word processing document,
+the plots are automatically added.
+                 
+                 
+HTML is the preferred format for debugging purposes.
+
+To create an empty code check: Control-Alt-I
+
+-------------------------------------------------------------------------------
+
+Git
+
+git clone https://github.com/rairizarry/murders.git
+git status
+git add new-file.txt
+git commit -m "adding a new file"
+git log new-file.txt
+git push
+git fetch - to update our local repository to be like the upstream repository
+git merge - to make these copies to the staging and working directories
+git pull - git fetch + git merge
+
+To start a repository:
+Create repository in git hub.
+Go to local folder
+git init
+git add README.txt
+git commit -m "First commit. Adding README.txt file just to get started."
+git remote add origin https://github.com/CountPooky/murders.git
+git push --set-upstream origin master
+
+-----------------------------------------------------------------------------------
+
+Unix commands
+
+start <filename>  - open the file with the associated application
+nano - editor

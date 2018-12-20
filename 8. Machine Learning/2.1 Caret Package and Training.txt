@@ -1,0 +1,180 @@
+Caret package, training and test sets, and overall accuracy
+
+In this course, we will be using the caret package, which
+has several useful functions for building and assessing machine learning methods.
+You can load it like this.
+
+> library(caret)
+
+Later, we show how these functions are useful.
+In this video, we focus on describing ways in which machine learning algorithms are evaluated.
+So let's get started.
+For our first introduction to machine learning concepts, we'll start with a boring and simple example--
+predict sex-- female or male-- using height.
+We explain machine learning step by step and this example will let us sit down the first building block.
+Soon enough, we'll be attacking more interesting challenges.
+For this first example, we will use the heights data set in the ds labs
+package, which you can load like this.
+
+> library(dslabs)
+> data(heights)
+
+
+We start by defining the outcome and predictors.
+In this example, we have only one predictor.
+So y is sex and x is height.
+
+> y <- heights$sex
+> x <- heights$height
+
+
+This is clearly a categorical outcome since y can be male or female, and we only have one predictor, height.
+We know that we will not be able to predict y very accurately based on x because male and female heights are not
+that different relative to within group variability, but can we do better than guessing?
+The answer to this question, we need to quantify the definition of better.
+Ultimately, a machine learning algorithm is
+evaluated on how it performs in the real world with others running the code.
+However, when developing an algorithm, we usually
+have a data set for which we know the outcomes as we do with the heights.
+We know the sex of every student.
+Therefore, to mimic the ultimate evaluation process, we typically split the data into two and act
+as if we don't know the outcome for one of these two sets.
+We stop pretending we don't know the outcome to evaluate the algorithm, but only after we're done constructing it.
+We refer to the groups of which we know the outcome and use to develop the algorithm as the training set,
+and the group for which we pretend we don't know the outcome as the test set.
+A standard way of generating the training and test sets is by randomly splitting the data.
+The caret package includes the function createDataPartition that helps us generate indexes for randomly splitting
+the data into training and test sets.
+The argument times in functions is used to define how many random samples of indexes to return.
+The argument p is used to define what proportion of the index 
+represented and the argument list is used to decide you want indexes to be returned as a list or not.
+Here we're going to use it like this.
+
+> set.seed(2)
+> test_index <- createDataPartition(y, times = 1, p = 0.5, list = FALSE)
+
+
+We can use this index to define the training set and test set like this.
+
+> train_set <- heights[-test_index, ]
+> test_set <- heights[test_index, ]
+
+We will now develop an algorithm using only the training set.
+Once we're done developing the algorithm, we will freeze it, and evaluate it using the tests.
+The simplest way to evaluate the algorithm when the outcomes are
+categorical is simply by reporting the proportion of cases that were correctly predicted in the test studies.
+This metric is usually referred to as overall accuracy.
+To demonstrate the use of overall accuracy, we will build two competing algorithms and compare them.
+Let's start by developing the simplest possible machine learning algorithm-- guessing the outcome.
+We can do that using the sample function like this.
+
+> y_hat <- sample(c("Male","Female"), length(test_index), replace=TRUE)
+
+
+Note that we're completely ignoring the predictor and simply guessing the sex.
+OK, let's move on.
+In machine learning applications, it is useful to use factors to represent the categorical outcomes.
+Our functions developed for machine learning, such as those in the caret package, require or recommend
+that categorical outcomes be coded as factors.
+So we can do that like this.
+
+> y_hat <- sample(c("Male","Female"), length(test_index), replace=TRUE)  %>% 
+  factor(levels = levels(test_set$sex))
+  
+The overall accuracy is simply defined as the overall proportion that is predicted correctly.
+We can compute that using this simple line of code.
+
+> mean(y_hat == test_set$sex)
+
+Not surprisingly, our accuracy is about 50%-- we're guessing.
+Now, can we do better?
+Exploratory data as it suggests we can because on average, males are slightly taller than females.
+You can see it by typing this code.
+
+> heights %>% group_by(sex) %>%
++	summarize(mean(height), sd(height))
+
+But how do we make use of this insight?
+Let's try a simple approach.
+Predict male if height is within two standard deviations from the average male.
+We can do that using this very simple code.
+
+> y_hat <- ifelse(x > 62, "Male", "Female") %>%
+  factor(levels = levels(test_set$sex))
+  
+  
+The accuracy goes way up from 50% to 80%, which we can see by typing this line, but can we do better?
+
+mean(y == y_hat)
+
+
+In the example above, we use the cutoff of 62 inches, but we can examine the accuracy obtained for other cutoffs
+and then take the value that provides the best result.
+But remember it is important that we pick the best value on the training set.
+The test set is only for evaluation.
+Although for this simplistic example, it is not much of a problem.
+Later, we will learn that evaluating an algorithm on the training set
+can lead to overfitting, which often results in dangerously over optimistic assessments.
+OK, so let's choose a different cutoff.
+We examined the accuracy we obtain with 10 different cutoffs and pick the one yielding the best result.
+We can do that with this simple piece of code.
+
+> cutoff <- seq(61,70)
+> acccuracy <- map_dbl(cutoff, function(x) {
+  y_hat <- ifelse(train_set$height > x, "Male","Female") %>%
+    factor(levels = levels(test_set$sex))
+  mean(y_hat == train_set$sex)
+})
+
+
+
+We can make a plot showing the accuracy on the training set for males and females.
+Here it is.
+We see that the maximum value is a 83.6%.
+
+> max(accuracy)
+
+
+Much higher than 50%, and it is maximized with the cutoff of 64 inches.
+Now, we can test this cut off on our test set to make sure accuracy is not overly optimistic.
+
+> y_hat <- ifelse(test_set$height > best_cutoff, "Male", "Female") %>%
+  factor(levels = levels(test_set$sex))
+> y_hat <- factor(y_hat)
+> mean(y_hat == test_set$sex)
+
+Now, we get an accuracy of 81.7%.
+We see that is a bit lower than the accuracy observed on the training set, but it's still better than guessing.
+And by testing on a data that we did not train on, we know it is not due to overfitting.
+
+
+Q1
+For each of the following, indicate whether the outcome is continuous or categorical.
+
+Digit reader
+ categorical  
+Movie recommendation ratings
+ continuous
+Spam filter
+ categorical
+Number of hospitalizations
+ continuous
+Siri
+ categorical
+
+
+Q2
+
+How many features are available to us for prediction in the mnist digits dataset?
+You can download the mnist dataset using the read_mnist() function from the dslabs package.
+784 (columns)
+
+
+Q3
+In the digit reader example, the outcomes are stored here: y <- mnist$train$labels.
+
+Do the following operations have a practical meaning?
+y[5] + y[6]
+y[5] > y[6]
+
+Yes, because 9 + 2 = 11 and 9 > 2. correct

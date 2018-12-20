@@ -1,0 +1,359 @@
+Combinations and Permutations
+
+To review, to compute the probability distribution of 1 draw, we simply listed out all the possibilities-- 
+there were 5-- and then for each event, we counted how many of these possibilities were associated with that event.
+
+So for example, for the blue beads the probability is 0.6.
+Pr(blue) = 0.6
+
+For example, what does the probability that if I draw 5 cards without replacement, I get all cards
+of the same suit, what is called a flush in poker?
+Discrete probability teaches us how to make these computations using mathematics.
+
+Let's create a deck of cards using R:
+expand.grid()
+paste() - create strings by joining smaller strings
+
+We can create a card using paste:
+> number <- "Three"
+> suit <- "Hearts"
+> paste(number, suit)
+
+Also works on vectors:
+> paste(letters[1:5], as.characters[1:5])
+[1] "a 1" "b 2" "c 3" "d 4" "e 5"
+
+
+expand.grid - gives us the combination of two grids
+> expand.grid(pants = c("blue","black"), shirt = c("white","grey","plaid"))
+	pants	shirt
+1	blue	white
+2	black	white
+3	blue	grey
+4	black	grey
+5	blue 	plaid
+6	black	plaid
+
+To create a deck of cards:
+> suits <- c("Diamonds", "Clubs", "Hearts", "Spades")	
+> numbers <- c("Ace", "Deuce", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten", "Jack", "Queen","King")
+> deck <- expand.grid(number=numbers, suits= suits)
+> deck <- paste(deck$number, deck$suit)
+
+Let's start by check the probability of a king in the first card is 1 in 13.
+create a vector of the 4 ways you can get a king:
+> kings <- paste("King", suits)
+> mean(deck %in% kings)
+[1] 0.07692308
+
+How about the conditional probability of the second card being a king, given that the first was a king?
+should be 3 in 51, let's check
+combinations()
+permutations() - computes, for any list of size "n", all the different ways we can select "r" items.
+
+ex: all the ways we can choose 2 numbers from the list 1, 2, 3, 4, 5.
+> library(gtools)
+> permutations(5,2)
+	[1]	[2]
+[1]	1	2
+[2]	1	3
+[3]	1	4
+[4]	1	5
+[5]	2	1
+[6]	2	3
+[7]	2	4
+[8]	2	5
+[9]	3	1
+[10]	3	2
+[11]	3	4
+[12]	3	5
+[13]	4	1
+[14]	4	2
+[15]	4	3
+[16]	4	5
+[17]	5	1
+[18]	5	2
+[19]	5	3
+[20]	5	4
+
+notice the order matters.
+
+We can also add vectors, ex, 5 random 7 digit phone numbers:
+> all_phone_numbers <- permutations(10, 7, v=0.9)
+> n <- nrow(all_phone_numbers)
+> index <- sample(n, 5)
+> all_phone_numbers[index,]
+
+To compute all possible ways that we can choose 2 cards when the order matters:
+> hands <- permutations(52, 2, v=deck)
+then get the first and second card
+> first_card <- hands[,1]
+> second_card <- hands[,2]
+
+Now we can check how many cases have a first card as a king
+> sum(first_card %in% kings)
+[1] 204
+To find the conditional probability, we ask what fraction of these 204 have also a king in the second card:
+> sum(first_card %in% kings & second_card %in% kings) / sum(first_card %in% kings)
+[1] 0.05882353
+that's 3 out of 51
+
+Notice this is also the same as this, where we compute the proportions instead of the totals:
+> mean(first_card %in% kings & second_card %in% kings) / mean(first_card %in% kings)
+
+Pr(B | A) = Pr(A and B) / Pr(A)
+
+Now what if the order does not matter.
+combinations(), not permutations()
+> combinations(3,2)
+	[,1]	[,2]
+[1,]	1	2
+[2,]	1	3
+[3,]	2	3
+
+Notice 2,1 does not show up because 1,2 would be same as 2,1 since the order does not matter.
+
+So to compute the probability of a natural 21 in blackjack:
+> aces <- paste("Ace", suits)
+> facecard <- c("King","Queen","Jack","Ten")
+> facecard <- expand.grid(number=facecard, suit=suits)
+> facecard <- paste(facecard#number, facecard$suit)
+> hands <- combinations(52, 2, v=deck)
+
+We defined a vector for aces, a vector for all facecards, then we generate all the combinations of picking
+2 cards out of 52, and then we simply count how often we get aces and a face card?
+> mean(hands[,1] %in% aces & hands[,2] %in% facecard)
+[1] 0.04826546
+
+Previously, we assumed the aces come first, this is only because we know the way that combination generates
+and enumerates possibilities. But if we want to be safe, we can instead type this which consideres
+both possibilities:
+> mean((hands[,1] %in% aces & hands[,2] %in% facecard) |
++	(hands[,2] %in% aces & hands[,1] %in% facecard))
+[1] 0.0482546
+
+This is the same answer because we know how combination works and how it lists the possibilities.
+
+Instead of using combinations, we can also use a Monte Carlo to estimate this probability.  We can draw
+two cards over and over and keep track of how many 21's we get.
+Here's one hand:
+> hand <- sample(deck, 2)
+> hand
+[1] "Jack Diamonds" 	"Ten Diamonds"
+
+> B<-10000
+> results <- replicate(B, {
++	hand <- sample(deck, 2)
++	(hand[1] %in% aces & hand[2] %in% facecard) |
++	(hand[2] %in% aces & hand[1] %in% facecard(
++ })
+> mean(reults)
+[1] 0.0488
+
+
+------------------------------------------------------------------------------------------------------
+
+
+The Birthday Problem
+
+Suppose you're in a classroom with 50 people, what are the chances that at least two people have the same birthday?
+Use Monte Carlo simulation
+Let's assume nobody was born on 2/29
+> n <- 50
+> bdays <- sample(1:365, n, replace=TRUE)
+
+To check if the 50 people we have at least two with the same birthday, use duplicated function
+Duplicated() - returns true whenever an element of a vector has already appeared in that vector
+> duplicated(c(1,2,3,1,4,3,5))
+[1] FALSE FALSE FALSE TRUE FALSE TRUE FALSE
+
+> any(duplicated(bdays))
+[1] TRUE
+
+to estimate the probability:
+> B <- 10000
+> results <- replicate(B, {
++	bdays <- sample(1:365, n, replace=TRUE)
++	any(duplicated(bdays))
++	})
+> mean(results)
+[1] 0.977
+
+-------------------------------------------------------------------------------------------------------
+
+sapply
+
+What if you want to make a bet with friends on the birthday problem?
+Let's make a lookup table to see the probability:
+> compute_prob <- function(n, B=10000){
++	same_day <- replicate(B, {
++		bdays <- sample(1:365, n, replace=TRUE)
++		any(duplicated(bdays))
++	})
++	mean(same_day)
++ }
+Let's so a small Monte Carlo simulation
+> n <- seq(1,60)
+
+For loops are rarely the preferred approach in R.  In general, we try to perform operations on entire vectors.
+Arithmetic operations, for example, operate on vectors in an element wise fashion.
+An example:
+> x <- 1:10
+> sqrt(x)
+
+> y <- 1:10
+> x * y
+
+So no need for for loops, but not all functions work this way.  We can't just send a vector to any function
+in R.  The function we just wrote does not work element-wise since it's expecting a scalar, it's expecting
+an end.  This piece of code does not do what we want.
+
+> compute_prob(n)
+[1] 0
+
+That's not what we want.  We will just get one number.
+
+We will use sapply.
+
+sapply - perform element-wise operations on any function.
+
+> x <- 1:10
+> sapply(x, sqrt)
+
+> prob <- sapply(n, compute_prob)
+
+Plot the probability of two people having the same birthday against the size of the group.
+> plot(n, prob)
+
+
+Let's compute the exact probabilities value instead of using Monte Carlo simulations.
+To make the math simpler for this particular problem, instead of computing the probability of it happening,
+we'll compute the probability of it not happening, and then we can use the multiplication rule.
+
+The probability of first person having a unique birthday is 1.
+Pr(person 1 has a unique birthday) = 1
+
+Second person:
+Pr(person 2 has a unique birthday | person 1 has a unique birthday) = 364/365
+
+Third person:
+Pr(person 3 has a unique birthday | person 1 and 2 has a unique birthday) = 363/365
+
+> exact_prob <- function(n) {
++	prob_unique <- seq(365, 365-n+1)/365
++	1 - prod(prob_unique)
++ }
+
+Now we can compute each probability for each n using sapply again like this:
+> eprob <- sapply(n, exact_prob)
+
+> plot(n, prob)
+> lines(n, eprob, col="red")
+
+Sometimes it is not possible to compute the exact probabilities, but we can still use Monte Carlo to estimate accurately.
+
+--------------------------------------------------------------------------------------------------------
+
+How many Monte Carlo experiments are enough?
+
+The larger the number of experiments, we're using the letter B to represent that, the better the approximation.
+This often requires advanced theoretical statistics training.
+One practical approach is to check for the stability of the estimate.  
+
+In the birthday problem example:
+> B <- 10^seq(1,5, len=100)
+> compute_prob <- function(B, n=22) {
++	same_day <- replicate(B, {
++		bdays <- sample(1:365, n, replace=TRUE)
++		any(duplicated(bdays))
++	})
++	mean(same_day)
++ }
+
+We are going to use n = 22, there is 22 people.  So we're going to run a simulation where we compute
+or estimate the probability of two people having a certain birthday using different sizes of the Monte Carlo
+simulations.  So the value of b is going to go from 10 to 20 to 40 to 100, etc.
+
+> prob <- sapply(B, compute_prob)
+
+Remember, each simulation has a different b, a different number of experiments.
+
+> plot(log10(B), prob, type="l")
+
+So in the graph, as B gets bigger and bigger, eventually it starts to stabilize. And that's when we start getting
+a feeling for the fact that now perhaps we have a large enough number of experiments.
+
+
+------------------------------------------------------------------------------------------------------
+
+Assessment
+
+1.
+Imagine you draw two balls from a box containing colored balls. You either replace the first ball before you draw the second or you leave the first ball out of the box when you draw the second ball.
+Under which situation are the two draws independent of one another?
+Remember that two events A and B are independent if Pr(A and B)=Pr(A)P(B).
+You replace the ball before drawning the next one
+
+2.
+Say you’ve drawn 5 balls from the a box that has 3 cyan balls, 5 magenta balls, and 7 yellow balls, with replacement, and all have been yellow.
+What is the probability that the next one is yellow?
+Assign the variable p_yellow as the probability of choosing a yellow ball on the first draw.
+Using the variable p_yellow, calculate the probability of choosing a yellow ball on the sixth draw.
+cyan <- 3
+magenta <- 5
+yellow <- 7
+
+# Assign the variable 'p_yellow' as the probability that a yellow ball is drawn from the box
+p_yellow = yellow / (cyan + magenta + yellow)
+
+# Using the variable 'p_yellow', calculate the probability of drawing a yellow ball on the sixth draw. Print this value to the console.
+yellow / (cyan + magenta + yellow)
+
+
+3.
+If you roll a 6-sided die six times, what is the probability of not seeing a 6?
+Assign the variable p_no6 as the probability of not seeing a 6 on a single roll.
+Calculate the probability of not seeing a 6 on six rolls.
+# Assign the variable 'p_no6' as the probability of not seeing a 6 on a single roll.
+p_no6 <- 1-(1/6)
+
+# Calculate the probability of not seeing a 6 on six rolls.
+p_no6 ^6
+
+
+4.
+Two teams, say the Celtics and the Cavs, are playing a seven game series. The Cavs are a better team and have a 60% chance of winning each game.
+What is the probability that the Celtics win at least one game? Remember that the Celtics must win one of the first four games, or the series will be over!
+Calculate the probability that the Cavs will win the first four games of the series.
+Calculate the probability that the Celtics win at least one game in the first four games of the series.
+# Assign the variable `p_cavs_win4` as the probability that the Cavs will win the first four games of the series.
+p_cavs_win4 <- 0.6^4
+
+# Using the variable `p_cavs_win4`, calculate the probability that the Celtics win at least one game in the first four games of the series.
+1-p_cavs_win4
+
+
+
+5.
+Create a Monte Carlo simulation to confirm your answer to the previous problem. Use B <- 10000 simulations.
+Use the replicate function to replicate the sample code for B <- 10000 simulations.
+Use the any function to indicate if any of the values in each simulated four-game series contains at least one win for the Celtics.
+Use the mean function to find the proportion of simulations that contain at least one win for the Celtics out of four games.
+# This line of sample code simulates four random games where the Celtics either lose or win. Each game is independent of other games.
+simulated_games <- sample(c("lose","win"), 4, replace = TRUE, prob = c(0.6, 0.4))
+any(simulated_games =="win")
+
+# The variable 'B' specifies the number of times we want the simulation to run. Let's run the Monte Carlo simulation 10,000 times.
+B <- 10000
+
+# Use the `set.seed` function to make sure your answer matches the expected result after random sampling.
+set.seed(1)
+
+# Create an object called `celtic_wins` that first replicates the sample code generating the variable called `simulated_games` for `B` iterations and then tallies the number of simulated series that contain at least one win for the Celtics.
+celtic_wins <- replicate(B, {
+  simulated_games <- sample(c("lose","win"), 4, replace = TRUE, prob = c(0.6, 0.4))
+  any(simulated_games == "win")
+})
+
+# Calculate the frequency out of B iterations that the Celtics won at least one game. Print your answer to the console.
+mean(celtic_wins)

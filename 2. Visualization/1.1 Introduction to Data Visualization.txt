@@ -1,0 +1,56 @@
+Exploratory Data Analysis
+
+2 type of variables: categorical and numericals
+Categoricals can be divided into ordinals and non-ordinals
+Numericals can be divided into discrete or continuous
+
+Categorical:
+Variables that are defined by a small number of groups we call categorical data.
+ex: male/femal or regions of the states (Northeast, South, North Central West).
+Can sometimes be ordered (mild, medium, or hot). These are called ordinal data.
+
+Numerical:
+Continuous variables are those that can take any value such as heights if measured with enough precision.
+ex: a pair of twins maybe 68.12 inchanges and 68.11 inchanges respectively.
+Counts such as population sizes are discrete because they have to be round numbers.
+Discrete numerical data can be considered ordinal.
+
+"Discrete numerical variables" - when we have many groups with few cases in each group.
+ie: the number of packs of cigarettes a person smokes a day founded to the closest pack (0,1,or 2)
+would be considered ORDINAL. While the number of cigarettes that we smoke (0,1,2,3 up to maybe 36) would be 
+considered a NUMERICAL variable.
+
+--Assessment
+
+Let's start by reviewing how to extract the variable names from a dataset using the names function. 
+What are the two variable names used in the heights dataset?
+>library(dslabs)
+>data(heights)
+>names(heights) or head(heights)
+
+Use the unique and length functions to determine how many unique heights were reported.
+>library(dslabs)
+>data(heights)
+>x <- heights$height
+>length(unique(x))
+
+For categorical data we can construct this distribution by simply computing the frequency of each unique value. This can be done with the function table. Here is an example:
+>x <- c(3, 3, 3, 3, 4, 4, 2)
+>table(x)
+x
+2 3 4
+1 4 2
+Use the table function to compute the frequencies of each unique height value. Because we are using the resulting frequency table in a later exercise we want you to save the results into an object and call it tab.
+>library(dslabs)
+>data(heights)
+>x <- heights$height
+>tab <- table(x)
+
+
+To see why treating the reported heights as an ordinal value is not useful in practice we note how many values are reported only once.
+In the previous exercise we computed the variable tab which reports the number of times each unique value appears. For values reported only once tab will be 1. Use logicals and the function sum to count the number of times this happens.
+>library(dslabs)
+>data(heights)
+>tab <- table(heights$height)
+>sum(tab==1)
+

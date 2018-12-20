@@ -1,0 +1,83 @@
+
+Encoding Data Using Visual Cues
+
+There are several approaches to our disposal, including
+position
+aligned lengths
+angles
+area
+brightness
+color hue
+
+
+It has hard to quantify angles and area, especially with pie charts and worse, donut charts.
+
+We can write this out or use length and positions with histogram plots.
+
+Position and length are the preferred way to display quantities over angles, which are preferred over area.
+
+Brightness and color are even harder to quantify than angles and area.
+
+---------------------------------------------------------------------------------------------------------
+
+Know When to Include Zero
+
+When using bar plots, it is dishonest not to start with 0.
+
+When using position rather than length, then it's not necessary to include 0.
+
+---------------------------------------------------------------------------------------------------------
+
+Do Not Distort Quantities
+
+Distortion for example chart is that that the radius, rather than the area was made to be proportional to the
+quantity, which implies that the proportions between the areas is squared.
+
+---------------------------------------------------------------------------------------------------------
+
+Order by a meaningful value
+
+default in ggplot is to order alphabetically when using characters or if using factors, order by factors.
+
+Rarely is ordering alphabetically useful.
+
+Use reorder function.
+
+---------------------------------------------------------------------------------------------------------
+
+Assessment
+
+When should we use pie charts?
+Never.  Barplots and tables are better.
+
+What is the problem with this plot?
+The axis does not start at 0. Judging by the length, it appears Trump received 3 times as many votes when in fact it was about 30% more.
+
+Take a look at the following two plots. They show the same information: rates of measles by state in the United States for 1928.
+The plot on the right is better because it orders the states by disease rate so we can quickly see the states with highest and lowest rates.
+
+To make the plot on the right in the previous exercise, we had to reorder the levels of the states' variables.
+Redefine the state object so that the levels are re-ordered by rate.
+Print the new object state and its levels so you can see that the vector is now re-ordered by the levels.
+library(dplyr)
+library(ggplot2)
+library(dslabs)
+dat <- us_contagious_diseases %>%
+filter(year == 1967 & disease=="Measles" & !is.na(population)) %>% mutate(rate = count / population * 10000 * 52 / weeks_reporting)
+state <- dat$state 
+rate <- dat$count/(dat$population/10000)*(52/dat$weeks_reporting)
+state <- reorder(dat$state, dat$rate)
+print(state)
+print(levels(state))
+
+
+Now we are going to customize this plot a little more by creating a rate variable and reordering by that variable instead.
+Add a single line of code to the definition of the dat table that uses mutate to reorder the states by the rate variable.
+The sample code provided will then create a bar plot using the newly defined dat.
+library(dplyr)
+library(dslabs)
+library(gridExtra)
+data(us_contagious_diseases)
+dat <- us_contagious_diseases %>% filter(year == 1967 & disease=="Measles" & count>0 & !is.na(population)) %>%
+  mutate(rate = count / population * 10000 * 52 / weeks_reporting)
+dat %>% mutate(state = reorder(state, rate)) %>% ggplot(aes(state, rate)) + geom_bar(stat="identity") + coord_flip()

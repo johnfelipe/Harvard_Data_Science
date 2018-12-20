@@ -1,0 +1,160 @@
+
+Web Scraping
+
+The data we need to answer questions are not always in a spreadsheet ready for us to read.
+For example, the US murders data set we used in R basics course originally came from this Wikipedia page.
+https://en.wikipedia.org/wiki/Murder_in_the_United_States_by_state
+
+You can see the data table when you visit the page. But unfortunately, there is no link to the data file.
+To make the data frame, we load it using data frames or the CSV files that we made available through DS Labs--
+we have to do some web scraping.
+
+Web scraping or web harvesting are the terms used to describe the process of extracting data from a website.
+The reason we can do this is because the information used by a browser
+to render web pages is received as text from a server.
+
+The text is computer code written in HyperText Markup Language or HTML.
+To see the code for a web page, you can actually visit the page on your browser and then view the code.
+Different browsers have different ways of doing this. In Chrome you can click on View Source to see it.
+
+Because this code is accessible, we can download the HTML files,
+import it into R, and then write programs to extract the information we need from the page.
+However, once we look at HTML code, this might seem like a daunting task.
+But we will show you some convenient tools to facilitate the process.
+
+
+To get an idea of how web scraping works, take a look at these few lines of code from the Wikipedia page
+that provides the Us murders data.
+
+The package we're going to learn to do web scraping is part of the tidyverse, and it's called rvest.
+The first step using this package is to import the web page into R. We can do this using this code.
+
+> library(rvest)
+> url <- "https://en.wikipedia.org/wiki/Murder_in_the_United_States_by_state"
+> h <- read_html(url)
+
+We load the library, we denote the URL of the page we want to read,
+and then use the read_html function to read it into the object h.
+
+Note that the entire murders in the US Wikipedia page is now contained in this object.
+The class of this object is actually XML document.
+
+> class(h)
+[1] "xml_document" "xml_node"
+
+The rvest package is actually more general. It handles XML documents, not just HTML documents.
+XML is a general markup language-- that's what the XML stands for.
+This language can be used to represent any kind of data.
+HTML is a specific type of XML, specifically developed for representing web pages.
+
+Here we focus on HTML documents.
+Now, we have this object h, how do we extract a table from the object?
+If we print h, we don't really see much.
+Here we know that the information is stored in an HTML table.
+
+> h
+{xml_document}
+<html ......>
+
+You can see this in a line of code of the HTML document we showed earlier.
+The specific line is this one.
+
+<table class="wikitable sortable">
+
+The different parts of HTML documents often define messages between the two symbols less than and greater than.
+
+
+These are referred to as nodes.
+The rvest package includes functions to extract nodes from HTML documents.
+The function html_nodes, plural, extracts all nodes of that type.
+
+html_nodes(): extracts all nodes of that type
+
+And html_node extracts just the first node of that type.
+
+html_node(): extracts the first node of a given type
+
+To extract the first table, we can use this very simple code.
+
+> tab <- h %>% html_nodes("table")
+> tab <- tab[[2]]
+> tab
+{xml_node}
+<table class="wikitable sortable">
+[1] <tr>.....
+[2] <tr>.....
+[3] <tr>.....
+[4] <tr>.....
+
+
+Now, instead of the entire web page, we just have the HTML code for that table.
+And we can see it by printing out tab. We are not quite there yet though, because this is clearly not a tidy data set.
+It's not even a data frame.
+
+
+In the code we just showed, you can definitely see a pattern, and writing code to extract just the data is very doable.
+In fact rvest includes a function precisely for this-- for converting HTML tables into data frames.
+
+> tab <- tab %>% html_table
+> class(tab)
+[1] "data.frame"
+
+Here's the code that you would use.
+If you use this function, you will extract the table from the HTML table. And now you get a data frame.
+We are now much closer to having a usable data table.
+
+Let's change the names of the columns, which are a little bit long,
+and then take a look. You can see that we already have a data frame very close to what we want.
+
+> tab <- tab %>% setNames(c("state","population", "total", "murders","gun_murders", "gun_ownership","total_rate",
+"murder_rate", "gun_murder_rate"))
+> head(tab)
+	state	population	total	murders	gun_murders	gun_ownership	total_rate murder_rate	gun_murder_rate
+Alabama		4,853,875	348	3[a]	3[a]		48.9		7.2		0.1[a]	0.1[a]
+Alaska		737,709		59	57	39		61.7		8.0		7.7	5.3
+
+However, we still have some data wrangling to do.
+For example, notice that some of the columns that are supposed to be numbers are actually characters.
+And what makes it even worse is that some of them have commas, so it makes it harder to convert to numbers.
+Before we continue with this, we're going to learn a little bit more
+about general approaches to extracting information from websites.
+Then we'll get back to our example.
+
+
+------------------------------------------------------------------------------------------------------------------
+
+CSS Selectors
+
+The default look of webpage made with the most basic HTML is quite unattractive. The aesthetically pleasing pages we see today are made using CSS. CSS is used to add style to webpages. The fact that all pages for a company have the same style is usually a result that they all use the same CSS file. The general way these CSS files work is by defining how each of the elements of a webpage will look. The title, headings, itemized lists, tables, and links, for example, each receive their own style including font, color, size, and distance from the margin, among others.
+
+To do this CSS leverages patterns used to define these elements, referred to as selectors. An example of pattern we used in a previous video is table but there are many many more. If we want to grab data from a webpage and we happen to know a selector that is unique to the part of the page, we can use the html_nodes function.
+
+However, knowing which selector to use can be quite complicated. To demonstrate this we will try to extract the recipe name, total preparation time, and list of ingredients from this guacamole recipe. Looking at the code for this page, it seems that the task is impossibly complex. However, selector gadgets actually make this possible. SelectorGadget is piece of software that allows you to interactively determine what CSS selector you need to extract specific components from the webpage. If you plan on scraping data other than tables, we highly recommend you install it. A Chrome extension is available which permits you to turn on the gadget highlighting parts of the page as you click through, showing the necessary selector to extract those segments.
+
+For the guacamole recipe page we already have done this and determined that we need the following selectors:
+
+h <- read_html("http://www.foodnetwork.com/recipes/alton-brown/guacamole-recipe-1940609")
+recipe <- h %>% html_node(".o-AssetTitle__a-HeadlineText") %>% html_text()
+prep_time <- h %>% html_node(".o-RecipeInfo__a-Description--Total") %>% html_text()
+ingredients <- h %>% html_nodes(".o-Ingredients__a-ListItemText") %>% html_text()
+
+You can see how complex the selectors are. In any case we are now ready to extract what we want and create a list:
+
+guacamole <- list(recipe, prep_time, ingredients)
+guacamole
+
+Since recipe pages from this website follow this general layout, we can use this code to create a function that extracts this information:
+
+get_recipe <- function(url){
+    h <- read_html(url)
+    recipe <- h %>% html_node(".o-AssetTitle__a-HeadlineText") %>% html_text()
+    prep_time <- h %>% html_node(".o-RecipeInfo__a-Description--Total") %>% html_text()
+    ingredients <- h %>% html_nodes(".o-Ingredients__a-ListItemText") %>% html_text()
+    return(list(recipe = recipe, prep_time = prep_time, ingredients = ingredients))
+}
+
+and then use it on any of their webpages:
+
+get_recipe("http://www.foodnetwork.com/recipes/food-network-kitchen/pancakes-recipe-1913844")
+
+There are several other powerful tools provided by rvest. For example, the functions html_form, set_values, and submit_form permit you to query a webpage from R. This is a more advanced topic not covered here.

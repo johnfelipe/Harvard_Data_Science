@@ -1,0 +1,621 @@
+Building a Better Offensive Metric for Baseball
+
+In trying to answer how well bases on balls predict runs, data exploration let us to this model.
+
+E[R|BB=x1, HR=x2] = B0 + B1x1 + B2x2
+
+Here, the data is approximately normal.
+And conditional distributions were also normal.
+Thus, we're justified to pose a linear model like this.
+
+Yi = B0 + B1x1 + B2x2 + ei
+
+With yi, the runs per game.
+x1, walks per game.
+And x2, home runs per game.
+
+To use lm here, we need to let it know that we have two predictive variables.
+So we use the plus symbol as follows.
+Here's a code that fits that multiple regression model.
+
+> fit <- Teams %>%
++	filter(yearID %in% 1961:2001) %>%
++	mutate(BB = BB/G, HR = HR/G, R = R/G) %>%
++	lm(R ~ BB + HR, data = .)
+
+Now, we can use the tidy function to see the nice summary.
+
+> tidy(fit, conf.int = TRUE)
+
+When we fit the model with only one variable without the adjustment,
+the estimated slopes were 0.735 and 1.844 for bases on ball and home runs, respectively.
+But note that when we fit the multivariate model,
+both these slopes go down with the bases on ball effect decreasing much more.
+
+Now, if we want to construct a metric to pick players, we need to consider single, doubles, and triples as well.
+Can we build a model that predicts runs based on all these outcomes?
+Now, we're going to take somewhat of a leap of faith and assume that these five variables are jointly normal.
+
+This means that if we pick any one of them and hold the other for fixed, the relationship with the outcome--
+in this case, runs per game-- is linear.
+And the slopes for this relationship do not depend on the other four values that were held constant.
+
+If this is true, if this model holds true, then a linear model for our data is the following.
+
+Yi = B0 + B1xi,1 + B2xi,2 + B3xi,3 + B4xi,4 + B5xi,5 + ei
+
+With x1, x2, x3, x4, x5 representing bases on balls per game,
+singles per game, doubles per game, triples per game, and home runs per game, respectively.
+
+Using lm, we can quickly find the least square errors for the parameters using this relatively simple piece of code.
+
+> fit <- Teams %>%
++	filter(yearID %in% 1961:2001) %>%
++	mutate(BB = BB/G,
++		singles = (H-X2B-X3B-HR)/G,
++		doubles = X2B/G,
++		triples = X3B/G,
++		HR = HR/G,
++		R = R/G) %>%
++	lm(R ~ BB + singles + doubles + triples + HR, data = .)
+
+We can again use the tidy function to see the coefficients, the standard errors, and confidence intervals.
+
+> coefs <- tidy(fit, conf.int = TRUE)
+> coefs
+
+To see how well our metric actually predicts runs, we can predict the number of runs for each team in 2002
+using the function predict to make the plot.
+Note that we did not use the 2002 year to create this metric.
+We used data from years previous to 2002.
+
+> Teams %>%
++	filter(yearID %in% 2002) %>%
++	mutate(BB = BB/G,
++		singles = (H-X2B-X3B-HR)/G,
++		doubles = X2B/G,
++		triples = X3B/G,
++		HR = HR/G,
++		R = R/G) %>%
++	mutate(R_hat = predict(fit, newdata= .))%>%
+ggplot(aes(R_hat, R)) + 
+  geom_point() +
+  geom_text(aes(label=teamID), nudge_x = .05) +
+  geom_smooth(method="lm", se=FALSE, color="black")
+
+And here is the plot.
+Our model does quite a good job, as demonstrated by the fact
+that points from the observed versus predicted plot fall
+close to the identity line.
+So instead of using batting average or just the number of home runs
+as a measure for picking players, we can use our fitted model to form a more informative metric that relates
+more directly to run production.
+
+Specifically, to define a metric for player A, we imagine a team made up of players just like player A
+and use our fitted a regression model to predict how many runs this team would produce.
+The formula would look like this.
+
+-2.769 + 0.371 x BB + 0.519 x singles + 0.771 x doubles + 1.240 x triples + 1.443 x HR
+
+We're basically sticking in the estimated coefficients into the regression formula.
+However, to define a player's specific metric, we have a bit more work to do.
+Our challenge here is that we have derived the metrics for teams based on team-level summary statistics.
+For example, the home run value that is entered into the equation is home runs per game for the entire team.
+If you compute the home runs per game for a player, it will be much lower.
+As the total is accumulated by nine batters, not just one.
+
+Furthermore, if a player only plays part of the game
+and gets less opportunity than average, it's still considered a game play.
+So this means that their rates will be lower than they should be.
+For players, a rate that takes into account opportunities is a per-plate-appearance rate.
+
+To make the per-game team rate comparable to the per-plate-appearance player rate, we compute the average number
+of team plate appearances per game using this simple piece of code.
+
+> pa_per_game <- Batting %>% filter(yearID == 2002) %>%
++	group_by(teamID) %>%
++	summarize(pa_per_game = sum(AB+BB)/max(G)) %>%
++	.$pa_per_game %>%
++	mean
+
+Now, we're ready to use our metric.
+We're going to compute the per-plate-appearance rates for players available in 2002.
+But we're going to use data from 1999 2001.
+Because remember, we are picking players in 2002.
+We don't know what has happened yet.
+To avoid small sample artifacts, we're going to filter players with few plate interferences.
+Here is the calculation of what we want to do in one long line of code using tidyverse.
+
+> players <- Batting %>% filter(yearID %in% 1999:2001) %>%
+  group_by(playerID) %>%
+  mutate(PA = BB + AB) %>%
+  summarize(G = sum(PA)/pa_per_game,
+            BB = sum(BB)/G,
+            singles = sum(H-X2B-X3B-HR)/G,
+            doubles = sum(X2B)/G,
+            triples = sum(X3B)/G,
+            HR = sum(HR)/G,
+            AVG = sum(H)/G,
+            PA = sum(PA)) %>%
+  filter(PA >= 300) %>%
+  select(-G) %>%
+  mutate(R_hat = predict(fit, newdata=.))
+
+So we fit our model.
+And we have player-specific metrics.
+
+The player-specific predicted runs computed here can be interpreted as a number of runs we
+would predict a team to score if this team was made up of just that player, if that player batted every single time.
+
+The distribution shows that there's y variability across players, as we can see here.
+
+> players %>% ggplot(aes(R_hat)) +
+  geom_histogram(binwidth = 0.5, color = "black")
+  
+To actually build the teams, we will need to know the players' salaries,
+since we have a limited budget.
+Remember, we are pretending to be the Oakland A's in 2002 with only a $40 million budget.
+We also need to know the players' position.
+Because we're going to need one shortstop, one second baseman, one third baseman, et cetera.
+For this, we're going to have to do a little bit of data wrangling 
+to combine information that is contained in different tables from the [INAUDIBLE] library.
+OK, so here we go.
+
+
+  
+We start by adding the 2002 salaries for each player using this code.
+
+> players <- Salaries %>%
+  filter(yearID == 2002) %>%
+  select(playerID, salary) %>%
+  right_join(players, by="playerID")
+  
+Next, we're going to add the defensive position.
+This is a little bit complicated, because players play more than one position each year.
+So here, we're going to pick the one position most played by each player using the top_n function.
+And to make sure that we only pick one position in the case of ties,
+we're going to take the first row if there is a tie. We also remove the OF position.
+Because this stands for outfielder, which
+is a generalization of three positions-- left field, center field, right field.
+We also remove pitchers, as they don't bat in the league that the Athletics play.
+Here is the code that does that.
+
+> players <- Fielding %>% filter(yearID == 2002) %>%
+  filter(!POS %in% c("OF","P")) %>%
+  group_by(playerID) %>%
+  top_n(1,G) %>%
+  filter(row_number(G) == 1) %>%
+  ungroup() %>%
+  select(playerID, POS) %>%
+  right_join(players, by="playerID") %>%
+  filter(!is.na(POS) & !is.na(salary))
+  
+  
+Finally, we add their names and last names so we know who we're talking about.
+And here's a code that does that.
+
+> players <- Master %>%
+  select(playerID, nameFirst, nameLast, debut) %>%
+  right_join(players, by="playerID")
+  
+So now, we have a table with our predicted run statistic, some other statistic, the player's name, their position,
+and their salary.
+
+
+> players %>% select(nameFirst, nameLast, POS, salary, R_hat) %>%
+  arrange(desc(R_hat)) %>%
+  top_n(10)
+                                  
+                                  
+If we look at the top 10 players based on our run production statistic,
+you're going to recognize some names if you're a baseball fan.
+Note the very high salaries of these players in the top 10.
+In fact, we see that players with high metrics have high salaries.
+We can see that by making a plot we do see some low-cost players with very high metrics.
+
+> players %>% ggplot(aes(salary, R_hat, color = POS)) +
+  geom_point() +
+  scale_x_log10()
+
+These would be great for our team.
+Unfortunately, these are likely young players that have not yet been able to negotiate a salary
+and are not going to be available in 2002.
+For example, the lowest earner on our top 10 list is Albert Pujols, who was a rookie in 2001.
+Here's a plot with players that debuted before 1997.
+
+> players %>% filter(debut < 1998) %>%
+  ggplot(aes(salary, R_hat, color = POS)) +
+  geom_point() +
+  scale_x_log10()
+  
+This removes all the young players.
+We can now search for good deals by looking at players that produce many more runs and others with similar salaries.
+We can use this table to decide what players to pick and keep 
+our total salary below the $40 million Billy Beane had to work with.
+
+Q1:
+What is the final linear model we use to predict runs scored per game?
+lm(R ~ BB + singles + doubles + triples + HR) correct
+
+Q2:
+We want to estimate runs per game scored by individual players, not just by teams. What summary metric do we calculate to help estimate this?
+
+Look at the code from the video for a hint:
+
+pa_per_game <- Batting %>% 
+  filter(yearID == 2002) %>% 
+  group_by(teamID) %>%
+  summarize(pa_per_game = sum(AB+BB)/max(G)) %>% 
+  .$pa_per_game %>% 
+  mean
+  
+pa_per_game: the number of plate appearances per team per game, averaged across all teams correct
+
+
+Q3:
+Imagine you have two teams. Team A is comprised of batters who, on average, get two bases on balls, four singles, 
+one double, and one home run. Team B is comprised of batters who, on average, get one base on balls, six singles, 
+two doubles, and one triple.
+
+Which team scores more runs, as predicted by our model?
+
+-2.769 + 0.371 x BB + 0.519 x singles + 0.771 x doubles + 1.240 x triples + 1.443 x HR
+
+Team A:
+-2.769 + (0.371 x 2) + (0.519 x 4) + (0.771 x 1) + (1.240 x 0) + (1.443 x 1)
+
+-2.769 + 0.742 + 2.076 + 0.771 + 0 + 1.443 = 2.263
+
+Team B:
+-2.769 + (0.371 x 1) + (0.519 x 6) + (0.771 x 2) + (1.240 x 1) + (1.443 x 0)
+
+-2.769 + 0.371 + 3.114 + 1.542 + 1.240 = 3.498
+
+  
+Team B
+
+-------------------------------------------------------------------------------------------------------------
+
+Building a Better Offensive Metric for Baseball: Linear Programing
+
+A way to actually pick the players for the team can be done using what computer scientists call linear programming. Although we don't go into this topic in detail in this course, we include the code anyway:
+
+library(reshape2)
+library(lpSolve)
+
+players <- players %>% filter(debut <= 1997 & debut > 1988)
+constraint_matrix <- acast(players, POS ~ playerID, fun.aggregate = length)
+npos <- nrow(constraint_matrix)
+constraint_matrix <- rbind(constraint_matrix, salary = players$salary)
+constraint_dir <- c(rep("==", npos), "<=")
+constraint_limit <- c(rep(1, npos), 50*10^6)
+lp_solution <- lp("max", players$R_hat,
+                  constraint_matrix, constraint_dir, constraint_limit,
+                  all.int = TRUE) 
+
+This algorithm chooses these 9 players:
+
+our_team <- players %>%
+  filter(lp_solution$solution == 1) %>%
+  arrange(desc(R_hat))
+our_team %>% select(nameFirst, nameLast, POS, salary, R_hat)
+
+  nameFirst    nameLast POS   salary R_hat
+1     Jason      Giambi  1B 10428571  7.99
+2     Nomar Garciaparra  SS  9000000  7.51
+3      Mike      Piazza   C 10571429  7.16
+4      Phil       Nevin  3B  2600000  6.75
+5      Jeff        Kent  2B  6000000  6.68
+
+We note that these players all have above average BB and HR rates while the same is not true for singles.
+
+my_scale <- function(x) (x - median(x))/mad(x)
+players %>% mutate(BB = my_scale(BB), 
+                   singles = my_scale(singles),
+                   doubles = my_scale(doubles),
+                   triples = my_scale(triples),
+                   HR = my_scale(HR),
+                   AVG = my_scale(AVG),
+                   R_hat = my_scale(R_hat)) %>%
+    filter(playerID %in% our_team$playerID) %>%
+    select(nameFirst, nameLast, BB, singles, doubles, triples, HR, AVG, R_hat) %>%
+    arrange(desc(R_hat))
+
+  nameFirst    nameLast    BB singles doubles triples    HR  AVG R_hat
+1     Jason      Giambi 3.317 -0.5315   0.754  -0.675 2.067 2.63  3.54
+2     Nomar Garciaparra 0.284  1.7330   2.651   0.471 1.003 3.95  2.97
+3      Mike      Piazza 0.596 -0.0499  -0.177  -1.335 2.682 1.70  2.56
+4      Phil       Nevin 0.790 -0.6751   0.670  -1.137 2.103 1.09  2.07
+5      Jeff        Kent 0.875 -0.2717   1.833   1.210 0.967 1.66  2.00
+
+-------------------------------------------------------------------------------------------------------
+
+On base Plus Slugging (OPS)
+
+Since the 1980s sabermetricians have used
+a summary statistic different from batting average to evaluate players.
+They realized walks were important, and that doubles, triples, and home runs should be weighted much more than singles,
+and proposed the following metric.
+
+(BB/PA) + ((singles + 2Doubles + 3Triples + 4HR)/AB)
+
+They call this on-base-percentage plus slugging percentage, or OPS.
+Today, this statistic has caught on, and you see it
+in ESPN and other sports networks.
+
+Although the sabermetricians are probably not using regression,
+this metric is impressively close to what
+one gets with regression to the summary statistic that we created.
+Here is the plot.
+They're very correlated.
+
+Q1:
+
+The on-base-percentage plus slugging percentage (OPS) metric gives the most weight to:
+Home Runs
+
+-----------------------------------------------------------------------------------------------------------
+
+
+Regression Fallacy
+
+Wikipedia defines the sophomore slump in the following way.
+A sophomore slump or sophomore jinx or sophomore jitters
+refers to an instance in which a second, or sophomore, effort fails to live up to the standard of the first effort.
+It is commonly used to refer to the apathy of students--
+second year of high school, college, university-- the performance of athletes-- second season of play--
+singers/bands-- second album-- television shows-- second season-- and movies-- sequels or prequels.
+
+We hear about the sophomore slump often in Major League Baseball.
+This is because in Major League Baseball, the Rookie of the Year--
+this is an award that's given to the first year player that is judged to have performed the best--
+usually does not perform as well during their second year.
+Therefore they call this the sophomore slump.
+
+Know, for example, that in a recent Fox Sports article
+they asked, will MLB's tremendous rookie class of 2015 suffer a sophomore slump.
+Now does the data confirm the existence of a sophomore slump?
+Let's take a look and examine the data for batting averages to see if the observation holds true.
+The data is available in the [? Lehman ?] [? Library, ?] but we have
+to do some work to create a table with the statistics for all the rookies of the year.
+Let's go through them.
+
+First, we create a table with player ID, their names and their most played position, using this code.
+
+> library(Lahman)
+> playerInfo <- Fielding %>%
+  group_by(playerID) %>%
+  arrange(desc(G)) %>%
+  slice(1) %>%
+  ungroup %>%
+  left_join(Master, by="playerID") %>%
+  select(playerID, nameFirst, nameLast, POS)
+
+Now we will create a table with only the Rookie of the Year Award winners and add their batting statistics.
+We're going to filter out pitchers since pitchers are not given awards for batting.
+And we're going to focus on offense.
+
+Specifically, we'll focus on batting average since it is the summary that most pundits talk about when
+discussing the sophomore slump.
+So we write this piece of code to do this.
+
+> ROY <- AwardsPlayers %>%
+  filter(awardID == "Rookie of the Year") %>%
+  left_join(playerInfo, by="playerID") %>%
+  rename(rookie_year = yearID) %>%
+  right_join(Batting, by="playerID") %>%
+  mutate(AVG = H/AB) %>%
+  filter(POS !="P")
+
+Now we'll keep only the rookie and sophomore seasons and remove players that did not play a sophomore season.
+
+> ROY <- ROY %>%
+  filter(yearID == rookie_year | yearID == rookie_year+1) %>%
+  group_by(playerID) %>%
+  mutate(rookie = ifelse(yearID == min(yearID), "rookie", "sophomore")) %>%
+  filter(n() == 2) %>%
+  ungroup %>%
+  select(playerID, rookie_year, rookie, nameFirst, nameLast, AVG)
+  
+And remember, now we're only looking at players that won the Rookie of the Year Award.
+This code achieves what we want.
+Finally, we will use the spread function to have one column for the rookie
+and another column for the sophomore years' batting averages.
+For that we use this simple line of code.
+
+> ROY <- ROY %>% spread(rookie, AVG) %>% arrange(desc(rookie))
+
+Now we can see the top performers in their first year.
+
+> ROY
+
+These are the Rookie of the Year Award winners.
+And we're showing their rookie season batting average and their sophomore season batting average.
+Look closely and you will see the sophomore slump.
+It definitely appears to be real.
+In fact, the proportion of players that have a lower batting average their sophomore years is 68%.
+
+So is it jitters?
+Is it a jinx?
+To answer this question, let's turn our attention to all players.
+We're going to look at the 2013 season and 2014 season.
+And we're going to look at players that batted at least 130 times.
+This is a minimum needed to win the Rookie of the Year.
+We're going to perform a similar operation as we did before to construct this data set.
+Here is the code.
+
+> two_years <- Batting %>%
+  filter(yearID %in% 2013:2014) %>%
+  group_by(playerID, yearID) %>%
+  filter(sum(AB) >= 130) %>%
+  summarize(AVG = sum(H)/sum(AB)) %>%
+  ungroup %>%
+  spread(yearID, AVG) %>%
+  filter(!is.na(`2013`) & !is.na(`2014`)) %>%
+  left_join(playerInfo, by="playerID") %>%
+  filter(POS !="P") %>%
+  select(-POS) %>%
+  arrange(desc(`2013`)) %>%
+  select(-playerID)
+
+Now let's look at the top performers of 2013 and then look at their performance in 2014.
+
+> two_years
+
+Note that the same pattern arises when we look at the top performers.
+Batting averages go down for the top performers.
+But these are not rookies.
+So this can't be explained with a sophomore slump.
+Also know what happens to the worst performers of 2013.
+Here they are.
+
+> arrange(two_years, `2013`)
+
+Their batting averages go up in their second season in 2014.
+Is this some sort of reverse sophomore slump?
+It is not.
+There is no such thing as a sophomore slump.
+This is all explained with a simple statistical fact.
+The correlation of performance in two separate years is high but not perfect.
+Here is the data for 2013 performance and 2014 performance.
+
+> two_years %>% ggplot(aes(`2013`, `2014`))+
+  geom_point()
+    
+You can see it's correlated.
+But it's not perfectly correlated.
+
+> summarize(two_years, cor(`2013`,`2014`))
+
+The correlation is 0.46.
+The data look very much like a bivariate normal distribution, which
+means that if we were to predict the 2014 batting average, let's call it y,
+for any given player that had a 2013 batting average of x, we would use the regression equation, which would be this.
+
+(Y-0.255)/0.032 = 0.46( (X-0.261)/0.23 )
+
+Because a correlation is not perfect, regression tells us that on average, we expect high performers from 2013
+to do a little bit worse in 2014.
+This regression to the mean.
+It's not a jinx.
+It's just due to chance.
+The rookies of the year are selected from the top values of x
+So it is expected that their y will regress to the mean.
+
+
+----------------------------------------------------------------------------------------------------------------
+
+Measurement Error Models
+
+Up until now, all our linear regression examples have been applied to two or more random variables.
+We assume the pairs are bivariate normal and use this to motivate a linear model.
+This approach covers most of real life examples where linear regression is used.
+
+The other major application comes from measurement error models.
+In these applications, it is common to have a nonrandom covariates, such as time.
+And randomness is introduced from measurement error, rather than sampling or natural variability.
+
+To understand these models, we're going to use a motivation example related to physics.
+Imagine you are Galileo in the 16th century trying to describe the velocity of a falling object.
+An assistant climbs the Tower of Pisa and drops a ball.
+While several other assistants record the position at different times.
+The falling object data set contains an example of what that data would look like.
+The assistant hands the data to Galileo and this is what he sees.
+He uses ggplot to make a plot.
+
+> falling_object %>%
+	ggplot(aes(time, observed_distance)) +
+	geom_point() +
+	ylab("Distance in meters")+
+	xlab("Time in seconds")
+
+Here we see the distance in meters that has dropped on the y-axis and time on the x-axis.
+Galileo does not know the exact equation, but from data exploration, by looking at the plot,
+he deduces that the position should follow a parabola, which we can write like this.
+
+f(x) = B0 + B1x + B2x^2
+
+The data does not fall exactly on a parabola, but Galileo knows that this is due to measurement error.
+His helpers make mistakes when measuring the distance the ball has fallen.
+To account for this, we write this model.
+
+Yi = B0 + B1xi + B2xi^2 + ei,i = 1,...n
+
+Here, y represents the distance the ball is dropped in meters.
+Xi represents time in seconds.
+And epsilon represents measurement error.
+
+The measurement error is assumed to be random, independent from each other
+and having the same distribution from each eye.
+We also assume that there is no bias, which means that the expected value of epsilon is 0.
+
+E[e] = 0
+
+Note that this is a linear model because it is a linear combination of known quantities.
+X and x squared are known and unknown parameters, the betas.
+Unlike our previous example, the x's are fixed quantities.
+This is just time.
+We're not conditioning.
+
+Now to pose a new physical theory and start making predictions about other falling objects,
+Galileo needs actual numbers, rather than the unknown parameters.
+The LSE squares estimates seem like a reasonable approach.
+So how do we find the LSE squares estimates?
+Note that the LSE calculations do not require the errors to be approximately normal.
+The lm( ) function will find the betas that minimize the residual sum of squares, which is what we want.
+So we use this code to obtain our estimated parameters.
+
+> fit <- falling_object %>%
+  mutate(y = observed_distance,time_sq = time^2) %>%
+  lm(y~time+time_sq, data=.)
+> tidy(fit)
+
+To check if the estimated parabola fits the data, the broom function augment( ) lets us do this easily.
+Using this code, we can make the following plot.
+
+> augment(fit) %>%
+  ggplot() +
+  geom_point(aes(time,y)) +
+  geom_line(aes(time, .fitted))
+
+Note that the predicted values go right through the points.
+Now, thanks to my high school physics teacher, I know that the equation for the trajectory of a falling object
+is the following.
+
+d = h0 + v0t - 0.5 x 9.8t^2
+
+With h0 and v0, the starting height and starting velocity respectively.
+The data we use follow this equation and added measurement error to simulate and observations.
+Dropping the ball, that means the starting velocity is 0
+because we start just by dropping it from the Tower of Pisa, which has a height of about 56.67 meters.
+These known quantities are consistent with the parameters that we estimated, which we can see using the tidy function.
+Here they are.
+
+> tidy(fit, conf.int = TRUE)
+ A tibble: 3 x 7
+  term        estimate std.error statistic  p.value conf.low conf.high
+  <chr>          <dbl>     <dbl>     <dbl>    <dbl>    <dbl>     <dbl>
+1 (Intercept)    56.3      0.711     79.2  1.62e-16    54.7      57.8   <- beta 0 (height) 
+2 time           -1.07     1.02      -1.06 3.14e- 1    -3.31      1.16  <- beta 1 (velocity)
+3 time_sq        -4.49     0.301    -14.9  1.21e- 8    -5.16     -3.83  <- beta 2 (acceleration constant)
+
+The Tower of Pisa height is within the confidence interval for beta 0.
+The initial velocity of 0 is in the confidence interval for beta 1.
+Note that the p value is larger than 0.05,
+which means we wouldn't reject the hypothesis that the starting velocity is 0.
+And finally, the acceleration constant is in the confidence intervals for negative 2 times beta 2.
+
+Q1:
+In our model of time vs. observed_distance, the randomness of our data was due to:
+measurement error correct
+
+Q2:
+Which of the following are important assumptions about the measurement errors in this experiment?
+The measurement error is random
+The measurement error is independent
+The measurement error has the same distribution for each time i
+
+Q3:
+Which of the following scenarios would violate an assumption of our measurement error model?
+There was one position where it was particularly difficult to see the dropped ball.
+If there were one position where it was particularly difficult to see the dropped ball, that would violate the assumption of randomness. If the experiment were conducted on the moon, that would simply predict a different gravitational constant. Repeating the experiment 10 instead of 100 times would not matter because we do not need a large sample for our assumptions to be valid in this model.

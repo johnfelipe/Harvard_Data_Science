@@ -1,0 +1,266 @@
+In this video, we make a connection between conditional probabilities and conditional expectations.
+For binary data, you can think of the conditional probably of y equals 1
+when x equals x as a proportion of 1s in the stratum of the population for which x equals x.
+
+Pr(Y=1|X=x)
+as the proportion of 1s in the stratum of the population for which X=x
+
+Many of the algorithms we will learn can be applied to both categorical and continuous data
+due to the connection between conditional probabilities and conditional expectations.
+Because the expectation is the average of values, y1 through yn
+in the population, in the case in which y's are 0s or 1s,
+the expectation is equivalent to the probability
+of randomly picking a 1 since the average is simply the proportion of 1s.
+Therefore, the conditional expectation is equal to the conditional probability.
+We, therefore, often only use the expectation
+to know both the conditional probability and the conditional expectation.
+So why do we even care about the conditional expectation?
+Just like with categorical outcomes, in most applications,
+the same observed predictors does not guarantee the same continuous outcome.
+Instead, we assume that the outcome follows
+the same conditional distribution, and we will now explain why we look and use the conditional expectations
+to define our predictors.
+Before we start describing approaches to optimizing the way we build algorithm for continuous outcomes,
+we first need to define what we mean when we say one approach is better than the other.
+With binary outcomes, we have already described
+how sensitivity, specificity, accuracy, and F1 can be used as quantifications.
+
+for binary outcomes:
+sensitivity,
+specificiity,
+accuracy,
+F1
+
+However, these metrics are not useful for continuous outcomes.
+The general approach of defining best in machine learning is to define a "loss function".
+The most common used one is a "squared loss function".
+If y hat is our predictor and y is our actual outcome, the squared loss function is simply the difference squared.
+
+Y^ = predictor
+Y = actual outcome
+
+squared loss function = (Y^ - Y)^2
+
+
+Because we often have a test set with many observations, say n observations,
+we use the "mean squared error" given by this formula.
+
+1/N  NEi=1 (Y^i - Yi)^2
+
+
+Note that if the outcomes are binary, the mean squared error
+is equivalent to accuracy since y hat minus y squared is one of the prediction was correct and 0 otherwise.
+And the average is just taking the proportion of correct predictions.
+In general, our goal is to build an algorithm that minimizes the loss so it is as close to 0 as possible.
+Because our data is usually a random sample, the mean squared error is a random variable.
+So it is possible that an algorithm minimize mean squared error on a specific data to look,
+but that in general, another algorithm will do better.
+We, therefore, try to find algorithms that minimize the mean squared error on average.
+That is, "we want the algorithm that minimizes the average of the squared loss across many, many random samples".
+The mathematical equation for this is this here.
+The expectation of the squared error.
+
+E {  1/N  NEi=1 (Y^i - Yi)^2 }
+
+Note that this is a theoretical concept because in principle, we only have one data set to work with.
+However, we will later learn of techniques that permit us to estimate this quantity.
+Before we continue, note that there are other loss functions other than squared loss.
+For example, we can use absolute value instead of squaring the errors.
+But in this course, we focus on minimizing squared loss since it is the most widely used.
+So why do we care about the conditional expectation in machine learning?
+This is because the expected value has an attractive mathematical property.
+It minimizes the expected squared loss.
+
+expectetd value minimizes expected square loss
+
+Specifically, of all possible y hats, the conditional expectation of y given x minimizes the expected loss given x.
+
+Y^ = E(Y | X = x)
+minimizes
+E{(Y^ - Y)^2 | X = x}
+
+Due to this property, a succinct description of the main task of machine learning is that we
+use data to estimate the conditional probability for any set of features x1 through xp.
+
+main task of machine learning:
+use data to estimate conditional probabilities
+f(x) = E(Y | X = x)
+for any set of features
+x = (x1,...,xp)
+
+
+This, of course, is easier said than done since this function
+can take any shape and p, the number of covariance, can be very large.
+OK, so consider a case in which we only have one predictor-- x.
+The expectation of y given x can be any function of x-- a line, a parabola, a sine wave, a step function, anything.
+
+E{Y | X = x}
+
+It gets even more complicated when we consider cases with larger number of covariance in which case, f of x
+is a function of a multi-dimensional vector x.
+For example, in our digit reader example, the number of covariance was 784.
+The main way in which computing, machine learning algorithms differ
+is in the approach to estimating this conditional expectation, and we are going to learn a few of those approaches.
+
+
+-------------------------------------------------------------------------------------------------------------
+
+Comprehension Check: Conditional Probabilities Review
+
+Q1
+
+Q1
+0/1 point (graded)
+In a previous module, we covered Bayes' theorem and the Bayesian paradigm. Conditional probabilities are a fundamental part of this previous covered rule.
+
+
+P(A|B) = P(B|A) (P(A)/P(B))
+
+We first review a simple example to go over conditional probabilities.
+
+Assume a patient comes into the doctor’s office to test whether they have a particular disease.
+
+The test is positive 85% of the time when tested on a patient with the disease (high sensitivity): P(test+|disease)=0.85
+The test is negative 90% of the time when tested on a healthy patient (high specificity): P(test-|heathy)=0.90
+The disease is prevalent in about 2% of the community: P(disease)=0.02
+Using Bayes' theorem, calculate the probability that you have the disease if the test is positive.
+
+P(disease|test+) = P(test+|disease)x ( P(disease)/P(test+) )
+= (P(test+|disease)P(disease))/ (P(test+|disease)P(disease) | P(test+|healthy)P(healthy))
+= (0.85x0.02)/(0.85x0.02+0.1x0.98 = 0.1478261
+
+------------------------------------------------------------------------------------------------------------
+
+
+The following 4 questions (Q2-Q5) all relate to implementing this calculation using R.
+
+We have a hypothetical population of 1 million individuals with the following conditional probabilities as described below:
+
+The test is positive 85% of the time when tested on a patient with the disease (high sensitivity): 
+The test is negative 90% of the time when tested on a healthy patient (high specificity): 
+The disease is prevalent in about 2% of the community: 
+Here is some sample code to get you started:
+
+set.seed(1)
+disease <- sample(c(0,1), size=1e6, replace=TRUE, prob=c(0.98,0.02))
+test <- rep(NA, 1e6)
+test[disease==0] <- sample(c(0,1), size=sum(disease==0), replace=TRUE, prob=c(0.90,0.10))
+test[disease==1] <- sample(c(0,1), size=sum(disease==1), replace=TRUE, prob=c(0.15, 0.85))
+
+
+Q2
+
+What is the probability that a test is positive?
+
+> table(disease, test)
+       test
+disease      0      1
+      0 882426  97656
+      1   3065  16853
+      
+(TP + FP)/total = (16853+97656)/1000000
+
+or
+
+mean(test)
+
+0.114509
+
+
+Q3
+What is the probability that an individual has the disease if the test is negative?
+
+> table(disease, test)
+       test
+disease      0      1
+      0 882426  97656
+      1   3065  16853
+      
+3065/1000000
+0.003065
+
+or 
+
+mean(disease[test==0])
+0.003461356
+
+
+Q4
+What is the probability that you have the disease if the test is positive?
+Remember: calculate the conditional probability the disease is positive assuming a positive test.
+
+mean(disease[test==1]==1)
+0.1471762
+
+
+Q5
+If the test is positive, what is the relative risk of having the disease?
+First calculate the probability of having the disease given a positive test, then normalize it against the disease prevalence.
+
+In this case, 2% is the disease prevalence, and "normalizing" means "divide by".
+
+0.1471762/0.02
+7.35881
+
+
+------------------------------------------------------------------------------------------------------------
+
+
+Comprehension Check: Conditional Probabilties Practice
+
+Q1:
+
+
+We are now going to write code to compute conditional probabilities for being male in the heights dataset. Round the heights to the closest inch. Plot the estimated conditional probability  for each .
+
+Part of the code is provided here:
+
+library(dslabs)
+data("heights")
+MISSING CODE
+	qplot(height, p, data =.)
+Which of the following blocks of code can be used to replace MISSING CODE to make the correct plot?
+
+heights %>% 
+	mutate(height = round(height)) %>%
+	group_by(height) %>%
+	summarize(p = mean(sex == "Male")) %>%
+	
+	
+Q2:
+
+In the plot we just made in Q1 we see high variability for low values of height. This is because we have few data points. This time use the quantile (\ 0.1,0.2,\dots,0.9 \)and the cut function to assure each group has the same number of points. Note that for any numeric vector x, you can create groups based on quantiles like this: cut(x, quantile(x, seq(0, 1, 0.1)), include.lowest = TRUE).
+
+Part of the code is provided here:
+
+ps <- seq(0, 1, 0.1)
+heights %>% 
+	MISSING CODE
+	group_by(g) %>%
+	summarize(p = mean(sex == "Male"), height = mean(height)) %>%
+	qplot(height, p, data =.)
+Which of the following lines of code can be used to replace MISSING CODE to make the correct plot?
+
+mutate(g = cut(height, quantile(height, ps), include.lowest = TRUE)) %>%
+
+
+Q3:
+
+You can generate data from a bivariate normal distrubution using the MASS package using the following code.
+
+Sigma <- 9*matrix(c(1,0.5,0.5,1), 2, 2)
+dat <- MASS::mvrnorm(n = 10000, c(69, 69), Sigma) %>%
+	data.frame() %>% setNames(c("x", "y"))
+And make a quick plot using plot(dat).
+
+Using an approach similar to that used in the previous exercise, let's estimate the conditional expectations and make a plot. Part of the code has been provided for you:
+
+ps <- seq(0, 1, 0.1)
+dat %>% 
+	MISSING CODE	
+	qplot(x, y, data =.)
+Which of the following blocks of code can be used to replace MISSING CODE to make the correct plot?
+
+mutate(g = cut(x, quantile(x, ps), include.lowest = TRUE)) %>%
+group_by(g) %>%
+summarize(y = mean(y), x = mean(x)) %>%

@@ -1,0 +1,310 @@
+
+Combining Tables
+
+The information we need for a given analysis may not be in just one table.
+For example, when forecasting elections, we use the function left underscore join to combine
+the information from two tables.
+left_join()
+
+Here, we use a simple example to illustrate the general challenge of combining tables.
+Suppose we want to explore the relationship between population
+size for US states, which we have in this table, and electoral votes, which we have in this one.
+> data(murders)
+> head(murders)
+
+Notice that just joining these two tables together like this
+will not work since the order of the states is not quite the same.
+We can see this by typing this code.
+
+> identical(results_us_election_2016$state, murders$state)
+[1] FALSE
+
+We see that the column names for the state names are not the same.
+The join functions in the dplyr package, which are based on the SQL joins,
+make sure that the tables are combined so that matching rows are together.
+The general idea is that one needs to identify one or more columns that contain the information needed to match the two tables.
+Then, a new table with the combined information is returned.
+Note what happens if we join the two tables by state using left join.
+
+> tab <- left_join(murders, results_us_election_2016, by = "state)
+> head(tab)
+state		abb	region	population	total	electoral_votes	clinton	trump	others
+Alabama		AL	South	
+Alaska		AK	West
+Arizona		AZ	West
+Arkansas	AR	South
+California	CA	West
+Colorado	CO	West
+
+The data has been successfully joined, and we can now make a plot to explore the relationship we're
+interested in by using this simple code.
+
+> tab %>% ggplot(aes(population/10^6, electoral_votes, label = abb)) +
++	geom_point() +
++	geom_text_repel() +
++	scale_x_continuous(trans = "log2") +
++	scale_y_continuous(trans = "log2") +
++	geom_smooth(method = "lm", se = FALSE)
+
+
+The plot shows that there is a relationship that's close to linear,
+with about two electoral votes for every million people.
+But with smaller states getting a higher ratio.
+Now, in practice, it is not always the case that each row in one table has a matching row in the other.
+For this reason, we have several different ways to join.
+To illustrate this challenge, we're going to take a subset of the two tables that we've been using.
+We're going to create two objects.
+Tab one is going to be a subset of our first table, 
+
+> tab1 <- slice(murders, 1:6) %>% select(state, population)
+> tab1
+state		population
+Alabama		
+Alaska
+Arizona
+Arkansas
+California
+Colorado
+
+and tab two is going to be a subset of our second table.
+
+> tab2 <- slice(results_us_election_2016, c(1:3, 5, 7:8)) %>%
++	select(state, electoral_votes)
+> tab2
+state		electoral_votes
+Alabama		9
+Alaska		3
+Arizona		11
+California	55
+Connecticut	7
+Delaware	3
+
+However, the states contained in the two tables are going to differ.
+We're going to use these two tables as examples of the different join functions.
+Let's start with left join.
+
+Suppose we want a table like tab one, but adding electoral votes to whatever states we have available in tab one.
+For this, we use left join, with tab one as the first argument, like this.
+
+> left_join(tab1, tab2)
+state		population	electoral_votes
+Alabama		
+Alaska
+Arizona
+Arkansas			NA
+California		
+Colorado			NA
+
+Note that NAs are added to two states in tab one that are not appearing in tab two.
+Also note that this function, as well as all the other joins, can receive the first argument through the pipe, like this.
+
+> tab1 %>% left_join(tab2)
+state		population	electoral_votes
+Alabama		
+Alaska
+Arizona
+Arkansas			NA
+California		
+Colorado			NA
+
+If instead of a table like tab one we want one like tab two, we can use the right join, like this.
+
+> tab2 %>% right_join(tab2)
+state		population	electoral_votes
+Alabama				9
+Alaska				3
+Arizona				11
+California			55
+Connecticut	NA		7
+Delaware	NA		3
+
+Notice that now the NAs are in the columns coming from tab one.
+Now, if we want to keep only the rows that have information in both tables, we use inner join.
+You can think of this as an intersection.
+So we type inner join tab one, tab two, and we get the following tables.
+
+> inner_join(tab1, tab2)
+state		population	electoral_votes
+Alabama
+Alaska
+Arizona
+California
+
+
+You know that this one doesn't have NAs.
+Now, if you want to keep all the rows and fill in the missing parts with NAs, we can use full join.
+You can think of this as a union. The code is simply like this.
+
+> full_join(tab1, tab2)
+state		population	electoral_votes
+Alabama		
+Alaska
+Arizona
+Arkansas			NA
+California		
+Colorado			NA
+Connecticut	NA		7
+Delaware	NA		3
+
+There's two more join functions we're going to go over.
+They're a little bit different because they don't actually join the tables.
+Instead, they let you keep parts of one table, depending on what's in the other.
+The semi join function lets us keep the part of the first table for which we
+have information in the second. It does not add the columns of the second.
+You can see it by typing this. 
+
+> semi_join(tab1, tab2)
+state		population
+Alabama	
+Alaska
+Arizona
+California
+
+
+The function anti join is the opposite of semi join.
+It keeps the elements of the first table for which there is no information in the second.
+So if we type anti join tab one, tab two, we get this small little table.
+
+> anti_join(tab1, tab2)
+state		population
+Arkansas
+Colorado
+
+To learn more about how the joins work and to remember them, you can look at this diagram.
+
+-----------------------------------------------------------------------------------------------------------
+
+Binding
+
+
+Another common way in which data sets are combined are by binding them.
+Regardless of the row order.
+Unlike the join functions, the binding functions
+do not try to match by a variable, but rather just combine the data sets.
+
+If the data sets don't match by the appropriate dimension we will obtain an error.
+The dplyr function bind_cols binds two objects by putting the columns of each together in a tibble.
+bind_cols(): binds columns and creates a tibble
+
+For example, if we quickly want to make a data frame consisting of just numbers, we can use something like this.
+> bind_cols(a = 1:3, b = 4:6)
+# A tibble: 3 x 2
+	a	b
+	1	4
+	2	5
+	3	6
+	
+Note that there's an r-based function, cbind, that performs the same function
+but creates objects other than tibbles, either matrices or data frames, something else.
+cbind(): creates objects other than tibbles
+
+Bind_cols can also bind data frames.
+For example, here we break up the tab data frame and then bind them back together.
+So we break it up into three with different columns,and then we simply bind them back together.
+So you can see that we get the original data again.
+
+> tab1 <- tab[, 1:3]
+> tab2 <- tab[, 4:6]
+> tab3 <- tab[, 7:9]
+> new_tab <- bind_cols(tab1, tab2, tab3)
+> head(new_tab)
+	state		abb	region	population	total	electoral_votes	clinton	trump	others
+	
+	
+
+The bind_rows is similar, but binds rows instead of columns.
+We'll show a simple example where we take the first two
+rows, and the third and fourth rows, and then bind them together to get rows 1 through 4.
+This one is based on an r-based function called rbind.
+
+> tab1 <- tab[1:2,]
+> tab2 <- tab[3:4,]
+> bind_rows(tab1, tab2)
+
+----------------------------------------------------------------------------------------------------
+
+Set Operators
+
+Another set of commands useful for combining data are the set operators.
+When applied to vectors, these behave as their name suggests-- union, intersect, et cetera.
+
+However, if the tidyverse, or, more specifically, dplyr is loaded,
+these functions can be used on data frames, as opposed to just on vectors.
+Let's start with intersect.
+
+You can take the intersection of numeric vectors-- for example, like this-- or character vectors.
+
+> intersect(c("a","b","c"), c("b","c","d")
+[1] "b" "c"
+
+It's simply taking the intersection.
+But with dplyr loaded, we can also do this for tables.
+It'll take the intersection of rows for tables having the same column names.
+So if we take the first five rows of tab and rows three through seven of tabs,
+and we take the intersection, it will give us rows three, four, and five, which you can see here.
+
+> tab1 <- tab[1:5,]
+> tab2 <- tab[3:7,]
+> intersect(tab1, tab2)
+
+Similarly, union takes the union.
+If you apply it to vectors, you get the union like this.
+> union(1:10, 6:15)
+[1] 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15
+
+> union(c("a","b","c"), c("b","c","d"))
+[1] "a" "b" "c" "d"
+
+But with dplyr loaded, we can also do this for tables having the same column names.
+So if we take those two tables we defined previously and take the union,
+we now get rows one through seven, the rows that are in common, the union.
+
+> tab1 <- tab[1:5,]
+> tab2 <- tab[3:7,]
+> union(tab1, tab2)
+
+We can also take set differences using the function setdiff.
+Unlike intersect and union, this function is not symmetric.
+For example, note that you get two different answers if you switch the arguments.
+You can see that using this example.
+
+> setdiff(1:10, 6:15)
+[1] 1 2 3 4 5
+> setdiff(6:15, 1:10)
+[1] 11 12 13 14 15
+
+
+And again, with dplyr loaded, we can apply this to data frames.
+Look what happens when we take the setdiff of tab one and tab two.
+
+> tab1 <- tab[1:5,]
+> tab2 <- tab[3:7,]
+> setdiff(tab1, tab2)
+
+
+Finally, the function setequal tells us if two sets
+are the same regardless of order.
+
+So for example, if I do set equals of one through five and one through six,
+I get false, because they're not the same vectors.
+
+> setequal(1:5, 1:6)
+[1] FALSE
+
+But if I take set equals of one through five and five through one,
+I get true, because if you ignore order, these are the same vectors.
+
+> setequal(1:5, 5:1)
+[1] TRUE
+
+With dplyer loaded, we can use this on data frames, as well.
+When applied to data frames that are not equal, regardless of order,
+it provides a useful message letting us know how the sets are different.
+Look what happens if I ask if tab one and tab two are set equal.
+
+> setequal(tab1, tab2)
+FALSE: Rows in x but not y: 2,1. Rows in y but not in x: 5, 4
+
+We get false, and we also get told which rows are different
+and which ones are in x and not in y, and which ones are in y and not in x.
+This can be quite useful.

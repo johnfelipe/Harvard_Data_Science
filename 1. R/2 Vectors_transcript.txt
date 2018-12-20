@@ -1,0 +1,53 @@
+
+[MUSIC PLAYING]
+RAFAEL IRIZZARY: In an earlier video, we saw that California
+had the most murders of any state.
+But does this mean it is the most dangerous state?
+What if it just has many, many more people than any other one?
+Using the tools we have learned, we can very quickly
+confirm that indeed, California has the largest population.
+We simply type murders$state and then ask which is the biggest state,
+population-wise, using code.
+And we see that as California.
+In fact, we can see how many people it has
+by just looking at the maximum of the populations column.
+With over 37 million inhabitants, it might
+be unfair to compare California to other states.
+What we really should be computing is the murders per capita.
+Here, the powerful vector arithmetic capabilities of R come in handy.
+In R, arithmetic operations on vectors occur element-wise.
+What does this mean?
+For a quick example, suppose we have height in inches.
+We're going to add some heights to a heights object.
+Suppose you want to convert them to centimeters.
+Note what happens when we multiply the object heights by the value 2.54.
+We get back each element multiplied by 2.54.
+They've been converted to centimeters.
+Similarly if for each of these measurements,
+we want to compute how many inches taller or shorter than the average,
+we can subtract the average from every entry.
+Let's say the average is 69 inches.
+Then we write the following code.
+Heights minus 69 will give us for each entry how much bigger or smaller
+they are from 69.
+If we have two vectors of the same length,
+these operations are even more powerful.
+For example, if we have two vectors like this, they get added entry by entry.
+And the same holds for other mathematical operations
+such as multiplication, subtraction and division.
+This implies that to compute the murder rate, murders for every 100,000 people,
+we can simply type murder rate-- that's the object we're defining--
+is the total divided by the population, multiplied by 100,000.
+So the total for each state is going to be
+divided by the population for each state, element-wise, one by one.
+And then at the end, we multiply those values by 100,000
+to get it in the right units.
+Once we do this, we notice that California
+is no longer near the top of the list.
+We can use what we've learned to order the states by murder rate.
+Here I'm going to look at the states ordered by murder rate, in this case,
+in decreasing order.
+And now we see that California is not even in the top 10.
+The highest murder rate is in the District of Columbia,
+the second one is in Louisiana, et cetera.
+And California is only the 14th.

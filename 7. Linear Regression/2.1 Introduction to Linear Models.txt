@@ -1,0 +1,303 @@
+Confounding: Are BBs More Predictive?
+
+In a previous video, we found that the slope
+of the regression line for predicting runs from bases on balls was 0.735.
+So, does this mean that if we go and higher low salary
+players with many bases on balls that increases the number of walks per game by 2 for our team?
+Our team will score 1.47 more runs per game?
+We are again reminded that association is not causation.
+ASSOCIATION IS NOT CAUSATION
+
+The data does provide strong evidence that a team with 2 more bases on balls
+per game than the average team scores 1.47 more runs per game,
+but this does NOT mean that bases on balls are the cause.
+
+If we do compute the regression line slope for singles, we get 0.449, a lower value.
+Note that a single gets you to first base just like a base on ball.
+Those that know a little bit more about baseball will tell you that with a single, runners that are on base
+have a better chance of scoring than with a base on balls.
+So, how can base on balls be more predictive of runs?
+The reason this happens is because of confounding.
+
+> Teams %>%
++	filter(yearID %in% 1961:2001) %>%
++	mutate(Singles = (H-HR-X2B-X3B)/G, BB = BB/G, HR = HR/G) %>%
++	summarize(cor(BB,HR), cor(Singles, HR), cor(BB, Singles))
+	cor(BB,HR)	cor(Singles, HR)	cor(BB, Singles)
+1	0.404		-0.174			-0.0561
+
+
+Note the correlation between homeruns, bases on balls, and singles.
+We see that the correlation between bases on balls and homeruns is quite high compared to the other two pairs.
+It turns out that pitchers, afraid of homeruns, will sometimes avoid throwing strikes to homerun hitters.
+As a result, homerun hitters tend to have more bases on balls.
+
+Thus, a team with many homeruns will also have more bases on balls than average, and as a result,
+it may appear that bases on balls cause runs.
+But it is actually the homeruns that caused the runs.
+In this case, we say that bases on balls are confounded with homeruns.
+But could it be that bases on balls still help?
+To find out, we somehow have to adjust for the homerun effect.
+Regression can help with this.
+
+Why is the number of home runs considered a confounder of the relationship between bases on balls and runs per game?
+Players who get more bases on balls also tend to have more home runs; in addition, home runs increase the points per game. 
+Number of home runs is a confounder of the relationship between bases on balls and runs per game because players who 
+get more bases on balls also tend to have more home runs and home runs also increase the points/runs scored per game.
+
+----------------------------------------------------------------------------------------------------
+
+Stratification and Multivariate Regression
+
+To try to determine if bases on balls is still useful for creating runs,
+a first approach is to keep home runs fixed at a certain value
+and then examine the relationship between runs and bases on balls.
+
+As we did when we stratified fathers by rounding to the closest inch, 
+here, we can stratify home runs per game to the closest 10th. 
+We filtered our strata with few points.
+We use this code to generate an informative data set.
+
+
+> dat <- Teams %>% filter(yearID %in% 1961:2001) %>%
++	mutate(HR_strata = round(HR/G,1),
++		BB_per_game = BB/G,
++		R_per_game = R/G) %>%
++	filter(HR_strata >= 0.4 & HR_strata <= 1.2)
+
+And then, we can make a scatter plot for each strata.
+
+> dat %>%
++	ggplot(aes(BB_per_game, R_per_game)) +
++	geom_point(alpha=0.5) +
++	geom_smooth(method = "lm") +
++	facet_wrap(~HR_strata)
+
+
+A scatterplot of runs versus bases on balls.
+This is what it looks like.
+
+Remember that the regression slope for predicting runs with bases on balls when we ignore home runs was 0.735.
+
+But once we stratify by home runs, these slopes are substantially reduced.
+We can actually see what the slopes are by using this code.
+
+> dat %>%
++	group_by(HR_strata) %>%
++	summarize(slope = cor(BB_per_game, R_per_game)*sd(R_per_game)/sd(BB_per_game))
+
+
+We stratify by home run and then compute the slope using the formula that we showed you previously.
+
+These values are closer to the slope we obtained from singles, which is 0.449.
+Which is more consistent with our intuition.
+Since both singles and bases on ball get us to first base,
+they should have about the same predictive power.
+
+Now, although our understanding of the application-- our understanding
+of baseball-- tells us that home runs cause bases on balls and not
+the other way around, we can still check if, after stratifying by base on balls,
+we still see a home run effect or if it goes down.
+We use the same code that we just used for bases on balls.
+But now, we swap home runs for bases on balls to get this plot.
+
+dat <- Teams %>% filter(yearID %in% 1961:2001) %>%
+  mutate(BB_strata = round(BB/G,1),
+         HR_per_game = HR/G,
+         R_per_game = R/G) %>%
+  filter(BB_strata >= 2.8 & BB_strata <= 3.9)
+
+#Make a scatter plot for each strata.
+dat %>%
+  ggplot(aes(HR_per_game, R_per_game)) +
+  geom_point(alpha=0.5) +
+  geom_smooth(method = "lm") +
+  facet_wrap(~BB_strata)
+
+
+In this case, the slopes are the following.
+
+
+dat %>%
+  group_by(BB_strata) %>%
+  summarize(slope = cor(HR_per_game, R_per_game)*sd(R_per_game)/sd(HR_per_game))
+
+
+You can see they are all around 1.5, 1.6, 1.7.
+So they do not change that much from the original slope estimate, which was 1.84.
+
+Regardless, it seems that if we stratify by home runs, we have an approximately bivariate normal distribution
+for runs versus bases on balls.
+
+Similarly, if we stratify by bases on balls, we have an approximately normal bivariate distribution
+for runs versus home runs.
+
+So what do we do?
+It is somewhat complex to be computing regression lines for each strata.
+We're essentially fitting this model that you 
+can see in this equation with the slopes for x1 changing for different values of x2 and vice versa.
+Here, x1 is bases on balls.
+And x2 are home runs.
+
+E[R|BB=x1,HR=x2] = B0 + B1(x2)x1 + B2(x1)x2
+
+
+Is there an easier approach?
+Note that if we take random variability into account, the estimated slopes by strata don't appear to change that much.
+If these slopes are in fact the same, this implies that this function beta 1 of x2 and the other function beta 2 of x1
+are actually constant.
+
+Which, in turn, implies that the expectation of runs condition on home runs and bases on balls
+can be written in this simpler model.
+
+E[R|BB=x1,HR=x2] = B0+b1x1+B2x2
+
+This model implies that if the number of home runs is fixed, we observe a linear relationship between runs and bases 
+on balls.
+And that the slope of that relationship does not depend on the number of home runs.
+Only the slope changes as the home runs increase.
+The same is true if we swap home runs and bases on balls.
+
+In this analysis, referred to as multivariate regression, we say that the "bases on balls slope beta 1
+is adjusted for the home run effect".
+If this model is correct, then confounding has been accounted for.
+But how do we estimate beta 1 and beta 2 from the data?
+For this, we'll learn about linear models and least squares estimates.
+
+
+As described in the video, when we stratified our regression lines for runs per game vs. bases on balls by the number of home runs, what happened?
+The slope of runs per game vs. bases on balls within each stratum was reduced because we removed confounding by home runs.
+
+---------------------------------------------------------------------------------------------------------------
+
+Linear Models
+
+Since Galton's original development, regression has become one of the most widely used tools in data science.
+One reason for this has to do with the fact that 
+"regression permits us to find relationships between two variables while adjusting for others, "
+as we have just shown for bases on balls and home runs.
+
+This has been particularly popular in fields where randomized experiments are hard to run,
+such as economics and epidemiology.
+
+When we're not able to randomly assign each individual to a treatment
+or control group, confounding is particularly prevalent.
+For example, consider estimating the effect of any fast foods
+on life expectancy using data collected from a random sample of people in some jurisdiction.
+Fast food consumers are more likely to be smokers, drinkers, and have lower incomes.
+Therefore, a naive regression model may lead to an overestimate of a negative health effect of fast foods.
+So how do we adjust for confounding in practice?
+We can use regression.
+
+We have described how, if data is bivariate normal, then the conditional expectation follow a regression
+line, that the conditional expectation as a line is not an extra assumption,
+but rather a result derived from the assumption, that they are approximately bivariate normal.
+However, in practice it is common to explicitly write down
+a model that describes the relationship between two or more variables using what is called a linear model.
+We know that linear here does not refer to lines exclusively,
+but rather to the fact that the conditional expectation is a linear combination of known quantities.
+Any combination that multiplies them by a constant and then adds them up with, perhaps, a shift.
+For example, 2 plus 3x minus 4y plus 5z is a linear combination of x, y, and z.
+
+2 + 3x - 4y + 5z
+
+So beta 0 plus beta 1x1, plus beta 2x 2 is a linear combination of x1 and x2.
+
+B0 + B1x1 + B2x2
+
+The simplest linear model is a constant beta 0.
+B0
+
+The second simplest is a line, beta 0 plus beta 1x.
+B0 + B1x
+
+For Galton's data, we would denote and observe fathers' heights with x1 through xn.
+Then we model n son heights we are trying to predict with the following model.
+
+Yi = B0 + B1xi + ei, i=1,....,N
+
+Here, the little xi's are the father's heights, which are fixed not random, due to the conditioning.
+We've conditioned on these values.
+And then Yi big Yi is the random son's height that we want to predict.
+
+We further assume that the errors that are denoted with the Greek letter for E, epsilon, epsilon i,
+are "independent from each other", have expected value 0, and the standard deviation, which is usually called sigma,
+does not depend on i.
+It's the same for every individual.
+
+We know the xi, but to have a useful model for prediction, we need beta 0 and beta 1.
+We estimate these from the data.
+
+Once we do, we can predict the sons' heights from any father's height, x.
+Note that if we further assume that the epsilons are normally distributed,
+then this model is exactly the same one we derived earlier for the bivariate normal distribution.
+A somewhat nuanced difference is that in the first approach, we assumed the data was a bivariate normal,
+and the linear model was derived, not assumed.
+
+In practice, linear models are just assumed without necessarily assuming normality.
+The distribution of the epsilons is not specified.
+But nevertheless, if your data is bivariate normal, the linear model that we just showed holds.
+
+If your data is not bivariate normal, then you will need to have other ways of justifying the model.
+One reason linear models are popular is that they are interpretable.
+In the case of Galton's data, we can interpret the data like this.
+"Due to inherited genes, the son's height prediction grows by beta 1 for each inch we increase the father's height x."
+
+Because not all sons with fathers of height x are of equal height,
+we need the term epsilon, which explains the remaining variability.
+This remaining variability includes the mother's genetic effect, 
+environmental factors, and other biological randomness.
+Note that given how we wrote the model, the intercept beta 0 is not very interpretable, as it is the predicted height
+of a son with a father with no height.
+Due to regression to the mean, the prediction 
+will usually be a bit larger than 0, which is really not very interpretable.
+To make the intercept parameter more interpretable, we can rewrite the model slightly in the following way.
+
+Yi = B0 + B1(xi-avg(X)) + ei, i=1,...,N
+
+Here, we have changed xi to xi minus the average height x bar.
+We have centered our covariate xi.
+In this case, beta 0, the intercept, would be the predicted height for the average father for the case
+where xi equals x bar.
+
+Q1:
+
+We run a linear model for sons’ heights vs. fathers’ heights using the Galton height data, and get the following results:
+
+> lm(son ~ father, data = galton_heights)
+
+Call:
+lm(formula = son ~ father, data = galton_heights)
+
+Coefficients:
+(Intercept)    father  
+    35.71       0.50  
+Interpret the numeric coefficient for "father."
+
+For every inch we increase the father’s height, the predicted son’s height grows by 0.5 inches. 
+
+
+Q2:
+
+We want the intercept term for our model to be more interpretable, so we run the same model as before but now we subtract the mean of fathers’ heights from each individual father’s height to create a new variable centered at zero.
+
+galton_heights <- galton_heights %>%
+    mutate(father_centered=father - mean(father))
+We run a linear model using this centered fathers’ height variable.
+
+> lm(son ~ father_centered, data = galton_heights)
+
+Call:
+lm(formula = son ~ father_centered, data = galton_heights)
+
+Coefficients:
+(Intercept)    father_centered  
+    70.45          0.50  
+Interpret the numeric coefficient for the intercept.
+
+The height of a son of a father of average height is 70.45 inches.
+Because the fathers’ heights (the independent variable) have been centered on their mean, the intercept represents 
+the height of the son of a father of average height. In this case, that means that the height of a son of a father of 
+average height is 70.45 inches.
+If we had not centered fathers’ heights to its mean, then the intercept would represent the height of a son when a 
+father’s height is zero.

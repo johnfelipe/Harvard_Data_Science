@@ -1,0 +1,325 @@
+Regression for a Categorical Outcome
+
+All right let's continue with regression.
+The regression approach can also be applied to categorical data.
+To illustrate this, we will apply it to our previous example of predicting sex, male or female, using heights.
+
+library(dslabs)
+library(caret)
+library(dplyr)
+data("heights")
+
+y <- heights$height
+set.seed(2)
+test_index <- createDataPartition(y, times = 1, p = 0.5, list = FALSE)
+train_set <- heights %>% slice(-test_index)
+test_set <- heights %>% slice(test_index)
+
+
+If we define the outcome Y as 1 for females or 0 for males and X as the height, in this case, we are
+interested in the conditional probability of being female given the height.
+
+outcome Y = 1 for females
+and Y = 0 for males
+X height
+
+conditional probability
+Pr(Y = 1 | X = x)
+
+As an example, let's provide a prediction for a student that is 66 inches tall.
+What is the condition of probably of being female if you're 66 inches tall?
+In our dataset, we can estimate this by rounding to the nearest inch
+and computing the average for these values.
+You can do that using this code, and you find that the conditional probability is 24%.
+
+train_set %>%
+  filter(round(height)==66) %>%
+  summarize(mean(sex=="Female"))
+
+Let's see what it looks like for several values of X.
+We'll repeat the same exercise but for 60 inches, 61 inches, et cetera.
+Note that we're removing X values for which we have very few data points.
+And if we do this, we get the following results.
+
+
+heights %>% 
+  mutate(x = round(height)) %>%
+  group_by(x) %>%
+  filter(n() >= 10) %>%
+  summarize(prop = mean(sex == "Female")) %>%
+  ggplot(aes(x, prop)) +
+  geom_point()
+
+Since the results from this plot look close to linear,
+and it is the only approach we currently know, we will try regression.
+We assume that the conditional probability of Y being equals 1 given X is a line-- intercept plus slope times height.
+
+p(x) = Pr(Y = 1 | X = x) = B0 + B1x
+
+If we convert the factors to 0s and 1s, we can estimate beta 0 and beta 1 with least squares using this piece of code.
+
+lm_fit <- mutate(train_set, y = as.numeric(sex == "Female")) %>%
+  lm(y ~ height, data = .)
+
+Once we have the estimates, we can obtain an actual prediction.
+Our estimate of the conditional probability is going to be beta 0 hat plus beta 1 hat times x.
+
+p^(x) = B^0 + B^1x
+
+To form a prediction, we define a decision rule.
+We predict female if the conditional probability is bigger than 50%.
+
+predict female if 
+p^(x) > 0.5
+
+Now we can use the confusion matrix function to see how we did.
+We see that we got an accuracy of 78.5%.
+
+p_hat <- predict(lm_fit, test_set)
+y_hat <- ifelse(p_hat > 0.5, "Female", "Male") %>% factor()
+confusionMatrix(y_hat, test_set$sex)
+
+
+--------------------------------------------------------------------------------------------------------------
+
+Logistic Regression
+
+Note that the function beta 0 plus beta 1x can take any value, including negatives and values larger than 1.
+In fact, the estimate that we obtained for our conditional probability
+using linear regression goes from negative 0.4 to 1.12.
+But we're estimating a probability that's between 0 and 1.
+So can we avoid this?
+Logistic regression is an extension of linear regression that assures us the estimate of the conditional probability
+is, in fact, between 0 and 1.
+This approach makes use of the logistic transformation introduced in the data visualization course, which you can see here.
+
+
+g(p) = log (p/(1-p))
+
+The logistic transformation converts probabilities to log odds.
+As discussed in the data visualization course, the odds tells us how much more likely something
+will happen compared to not happen.
+So if p is equal to 0.5, this means that the odds are 1 to 1.
+Thus, the odds are 1.
+If p is 0.75, the odds are 3 to 1.
+A nice characteristic of this transformation is that it transforms probabilities to be symmetric around 0.
+Here's a plot of the logistic transformation versus the probability.
+
+heights %>% 
+  mutate(x = round(height)) %>%
+  group_by(x) %>%
+  filter(n() >= 10) %>%
+  summarize(prop = mean(sex == "Female")) %>%
+  ggplot(aes(x, prop)) +
+  geom_point() + 
+  geom_abline(intercept = lm_fit$coef[1], slope = lm_fit$coef[2])
+  
+  range(p_hat)
+#> [1] -0.398  1.123
+
+Now, how do we fit this model?
+We can no longer use least squares.
+Instead, we compute something called the "maximum likelihood estimate".
+You can learn more about this concept in a statistical theory textbook.
+In R, we can fit the logistic regression model with the function GLM, which stands for "Generalized Linear Models".
+This function is more general than logistic regression, so we need to specify the model we want.
+We do this through the family parameter.
+Here's the code that fits a logistic regression model to our data.
+
+glm_fit <- train_set %>%
+  mutate(y = as.numeric(sex == "Female")) %>%
+  glm(y~height, data = ., family = binomial)
+  
+  
+Just like with linear regression, we can obtain predictions using the predict function.
+
+p_hat_logic <- predict(glm_fit, newdata = test_set, type = "response")
+
+However, once we read the [? help ?] file predict.glm, we realize that when using predict with a GLM object,
+we have to specify that we want type equals response if we want the conditional probabilities.
+This is because the default is to return the logistic transform values.
+
+Now that we've done it, we can see how well our model fit.
+Note that this model fits the data slightly better than the line.
+
+Because we have an estimate of the conditional probability, we can obtain predictions using code like this.
+
+
+y_hat_logic <- ifelse(p_hat_logic > 0.5, "Female","Male") %>% factor
+confusionMatrix(y_hat_logic, test_set$sex)
+
+And once we look at the confusion matrix, we see that our accuracy has increased slightly to about 80%.
+Note that the resulting predictions are similar.
+
+data.frame(x = seq(min(tmp$x), max(tmp$x))) %>%
+  mutate(logistic = plogis(glm_fit$coef[1] + glm_fit$coef[2]*x),
+         regression = lm_fit$coef[1] + lm_fit$coef[2]*x) %>%
+  gather(method, p_x, -x) %>%
+  ggplot(aes(x, p_x, color = method)) + 
+  geom_line() +
+  geom_hline(yintercept = 0.5, lty = 5)
+
+This is because the two estimates of our conditional probability are larger than a half in roughly the same regions.
+You can see that in this plot.
+Both linear and logistic regression provide an estimate for the 
+conditional expectation, which, in the case of binary data, is equivalent to a conditional probability.
+So we can use it in machine learning applications.
+However, once we move on to more complex examples, we will see that linear regression and logistic regression
+are limited and not flexible enough to be useful.
+The techniques we will learn are essentially approaches to estimating conditional probabilities
+or conditional expectations in ways that are more flexible.
+
+
+---------------------------------------------------------------------------------------------------------------
+
+Case Study: 2 or 7
+
+In the simple examples we've examined up to now, we only had one predictor.
+We actually do not consider these machine learning challenges, which are characterized by having many predictors.
+So let's go back to the digit example, in which we had 784 predictors.
+
+However, for elicitive purpose, we would look at a subset of this data set, where we only
+have two predictors and two categories.
+
+We want to build an algorithm that can determine if a digit is a two or a seven from the two predictors.
+
+We're not quite ready to build an algorithm with 784 predictors.
+So we will extract two simple predictors from the 784.
+These will be the proportion of dark pixels that are in the upper left quadrant and the proportion of pixels that
+are black in the lower right quadrant.
+To have a more manageable data set, we will select a random sample of 1,000 digits from the training
+set that has 60,000 digits.
+
+500 will be in the training set, and 500 will be in the test set.
+We actually include these examples in the DS Lab package.
+And you can load it using this line of code.
+
+data("mnist_27")
+
+We can explore this data by plotting the two predictors and use colors to denote the labels.
+You can see them here.
+
+mnist_27$train %>% ggplot(aes(x_1, x_2, color = y)) +
+  geom_point()
+
+We can immediately see some patterns.
+For example, if x1, the first predictor, which represents the upper left panel,
+is large, then the digit is probably a seven.
+Also, for smaller values of the second predictor, the lower right panel, the twos appear to be in the mid-range values.
+To connect these insights to the original data, let's look at the images of the digits with the largest
+and smallest values of x1. Here are the images.
+This makes a lot of sense.
+The image on the left, which is a seven, has a lot of dark in the upper left quadrant.
+So x1 is big.
+The digit on the right, which is a two, has no black on the upper left quadrant.
+So x1 is small.
+OK.
+Now let's look at the original images corresponding 
+to the largest and smallest values of the second predictor, x2, which represents the lower right quadrant.
+Here we see that they're both sevens.
+The seven on the left has a lot of black on the lower right quadrant.
+The seven on the right has very little black on the lower right quadrant.
+So we can start getting a sense for why these predictors are informative, 
+but also why the problem will be somewhat challenging.
+So let's try building a machine learning algorithm with what we have.
+We haven't really learned any algorithm yet.
+So let's start with logistic regression.
+The model will be simply like this.
+The conditional probability of being a seven given the two predictors x1 and x2 will be a linear function of x1 and x2
+after the logistic transformation.
+
+p(x1,x2)= Pr(Y = 1 | X1=x1, X2 = x2)
+	= g^(-1) (B0 + B1x1 + B2x2)
+	
+with g^(-1) the inverse of the logictic function:
+	g^(-1)(x) = exp(x)/{1+ exp(x)}
+
+
+We can fit it using the glm fusnction like this.
+
+fit <- glm(y ~ x_1 + x_2, data=mnist_27$train, family = "binomial")
+
+And now we can build a decision rule based on the estimate of the conditional probability.
+Whenever it is bigger than 0.5, we predict a seven.
+Whenever it's not, we predict a two.
+So we write this code.
+
+p_hat <- predict(fit, newdata = mnist_27$test)
+y_hat <- factor(ifelse(p_hat > 0.5, 7, 2))
+confusionMatrix(data = y_hat, reference = mnist_27$test$y)
+
+Then we compute the confusion matrix, and we see that we achieve an accuracy of 79%.
+
+Not bad for our first try.
+But can we do better?
+Now before we continue, I want to point out that, for this particular data set, I know the true conditional probability.
+This is because I constructed this example using the entire set of 60,000 digits.
+I use this to build the true conditional probability p of x1, x2.
+
+P(x1, x2)
+
+Now note that this is something we don't have access to in practice,
+but included here in this example because it lets us compare estimates to our true conditional probabilities.
+And this teaches us the limitations of the different algorithms.
+So let's do that here.
+We can access and plot the true conditional probability.
+We can use this code.
+
+mnist_27$true_p %>% ggplot(aes(x_1, x_2, fill=p)) +
+  geom_raster()
+
+And it looks like this.
+We will improve this plot by choosing better colors.
+And we'll also draw a curve that separates the pairs, x1, x2,
+for which the conditional probably is bigger than 0.5 and lower than 0.5.
+We use this code.
+
+mnist_27$true_p %>% ggplot(aes(x_1, x_2, z = p, fill=p)) +
+  geom_raster() +
+  scale_fill_gradientn(colors=c("#F8766D","white","#00BFC4")) +
+  stat_contour(breaks=c(0.5), color="black")
+
+And now the plot looks like this.
+So we can see the true conditional probability.
+So to start understanding the limitations of logistic regression, we can compare the true conditional probability
+to the estimated conditional probability.
+Let's compute the boundary that divides the values of x1 and x2 that make the estimated conditional probably lower than 0.5
+and larger than 0.5.
+So at this boundary, the conditional probability is going to be equal to 0.5.
+Now we can do a little bit of math, shown here.
+
+g^(-1) (B^0 + B^1x1 + B^2x2) = 0.5 =>
+B^0 + B^1x1 + B^2x2 = g(0.5) = 0 =>
+x2 = -B^0/B^2 + - B^1/B^2x1
+
+And if we do this, we will see that the boundary can't be anything other than a straight line, which
+implies that our logistic regression approach has
+no chance of capturing the non-linear nature of our true conditional probability.
+
+p_hat <- predict(fit, newdata = mnist_27$true_p)
+mnist_27$true_p %>% mutate(p_hat = p_hat) %>%
+  ggplot(aes(x_1, x_2,  z=p_hat, fill=p_hat)) +
+  geom_raster() +
+  scale_fill_gradientn(colors=c("#F8766D","white","#00BFC4")) +
+  stat_contour(breaks=c(0.5),color="black") 
+
+
+You can see that the boundary of the true conditional probability is a curve.
+Now to see where the mistakes were made, we can again plot the test data with x1 and x2 plotted
+against each other and color used to show the label.
+If we do this, we can see where the mistakes are made.
+Because logistic regression divides the sevens and the twos with a line,
+we will miss several points that can't be captured by this shape.
+
+p_hat <- predict(fit, newdata = mnist_27$true_p)
+mnist_27$true_p %>% mutate(p_hat = p_hat) %>%
+  ggplot() +
+  stat_contour(aes(x_1, x_2, z=p_hat), breaks=c(0.5), color="black") + 
+  geom_point(mapping = aes(x_1, x_2, color=y), data = mnist_27$test) 
+
+So we need something more flexible.
+Logistic regression forces our estimates to be a plane and our boundary to be a line.
+We need a method that permits other shapes.
+We will start by describing the nearest neighbor algorithm and some kernel approaches.
+To introduce the concepts behind these approaches, we will again start with a simple one-dimensional example
+and describe the concept of smoothing.

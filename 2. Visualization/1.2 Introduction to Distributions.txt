@@ -1,0 +1,199 @@
+Introduction to Distributions
+
+Describe Heights to ET
+
+Distribution - the most basic statistical summary of a list of objects or numbers.  It is a compact description
+of a list with many elements.
+
+With categorical data, the distribution simply describes the proportions of each unique category.
+ie The sex represented in the heights data set can be summarized by the proportations of each of the two 
+categories, female and male:
+>prop.table(table(heights$sex))
+Female	Male
+0.227	0.773
+
+This two category FREQUENCE TABLE is the simplest form of a distribution we can form.
+23% are females and the rest are males
+
+When there are more categories, then a simple bar plot describes the distribution.
+
+A more useful way to define a distribution for numerical is to define a function that reports the proportion 
+of the data below a value A for all possible values of A.
+This function is called a cumulative distribution function OR CDF.
+F(a) = Pr(x <= a)
+We define a function f of a and make that equal to the proportion of values x less than or equal to a, 
+which is represented with this Pr, meaning proportion or probability, and then in parentheses the
+event that we require, x <= a.
+
+We can report the proportion of values between any two heights, say a and b, by computing f of b, 
+and then subtracting f of a.
+F(b) - F(a)
+
+Because CDFs can be determined mathematically, as opposed to using data as we do here, the word empirical
+is added to distinguish, and we use the term empirical CDF or ECDF.
+
+CDF is not very popular in practice because it does not easily convey characteristics of interests, such as, at 
+what value is the distribution centered, etc..
+
+Histograms as much preferred. The simplest way to make a histogram is to divide a span of our data into 
+non-overlapping bins of the same size.  Then for each bin, we count the number of values that fall in that interval.
+The histogram plots these counts as bars with the base of the bar the interval.
+Histogram is an approximation, it does not distinguish between 64, 64.1, and 64.2 inches. 
+In this particular case, differences are negligible.
+
+----------------------------------------------------------------------------------------
+
+Smooth Density Plots
+
+Smooth density plots are similar to historgrams but are aesthetically more appealing.
+Y axis changed from Count to Density
+When bin size gets smaller and smaller, the histogram gets smoother and smoother.
+To make the curve no depend on the hypothetical size of the hypothetical list, we computer the curve on the
+frequence scale rather than the count scale.
+
+In our example, we don't have a large data set and we can't make a histogram with very very small bins.
+To estimate the hypothetical smooth curve, is by making a histogram with our data, computer frequencies
+rather than counts, and using the bin size appropriate for our data.
+To smooth the history, we start by keeping the heights of the histogram bar with little points.
+We keep these points and draw a smooth curve that goes through the top of these histogram bars.
+That gives us the smooth density.
+
+We should select a degree of smoothness that we can defend as being representative of the underlying data.
+
+The y axis of a smooth density plot is scaled so that the area under the density curve adds up to 1.
+The y axis tells u the proportion of values in that bin, but this is only true if the bin is of size 1.
+For other size intervals, the best way to determine the proportation of data in that interval is by 
+computing the proptional of the total area contained in that interval.
+
+
+The advantage of smooth densities over histograms is that it makes it easier to compare to distribution.
+
+
+----------------------------------------------------------------------------------------
+
+Normal Distribution
+
+Normal distribution - Also known as the bell curve and as the Gaussian distribution.
+Rather than using data, the normal distribution is defined with a mathematical formula.
+
+For any interval, a and b, the proportion of values in the itnerval can be computed using this formula.
+We don't need to memorize or understand the details of the formula. R code can compute this for us.
+Note that it is completely defined by just 2 parameters, m and s.  Thte reset of the symbols in the formula 
+represent the interval ends, a and b, and known mathematical constants, pi and e.
+m : the average or mean
+s : the standard deviation of the distribution
+
+The distribution is symmetric, centered at the average, and most values, about 95%, are within two standard 
+deviations from the average.
+
+>average <- sum(x) / length(x)
+>SD <- sqrt( sum( (x-average)^2) / length(x))
+
+You can think of this as the average distance between the values and their average.
+
+computer the average and SD for the male heights, which we will store in x.
+> index <- heights$sex=="Male"
+> x <- heights$height[index]
+
+> average <= mean(x)
+> SD <- sd(x)
+> c(average=average, SD = SD)
+average	SD
+69.31	3.61
+
+
+The standard unit of value tells us how many standard deviations away from the average this value is.
+For a value x, we define the standard unit as z equals x minus the average divided by the SD.
+z = (x - average)/SD
+
+For example, a person of average height means z = 0.  A person that is tall would be z = 2.
+A person that is short would be z = -2. If in rare occurrences, a person is 7 foot tall, z > 3.
+
+In R, to get the standard units using the function scale:
+> z <- scale(x)
+
+In our example, to see how many men are within two standard deviations from the average, now that we were already
+converted to standard units, all we have to do is count the number of z's that are less than 2 and bigger
+than negative 2, and then divide by the total.
+So we take the mean of this quantity and we see that the proportion is 0.951
+>mean(abs(z) < 2)
+[1] 0.951
+That is ~95%, which is what the normal distribution predicts.
+
+
+
+-------------------------------------------------
+
+library(dslabs)
+data(heights)
+x <- heights$height[heights$sex == "Male"]
+mean(x > 69 & x <= 72)
+
+
+Use the normal approximation to estimate the proportion the proportion of the data that is between 69 and 72 inches.
+Note that you can't use x in your code, only avg and stdev. Also note that R has a function that may prove very 
+helpful here - check out the pnorm function (and remember that you can get help by using ?pnorm).
+
+library(dslabs)
+data(heights)
+x <- heights$height[heights$sex=="Male"]
+avg <- mean(x > 69 & x <= 72)
+stdev <- sd(x > 69 & x <= 72)
+pnorm(x > 69 & x <= 72, avg, stdev)
+
+
+Calculate ratio between two density
+
+library(dslabs)
+data(heights)
+x <- heights$height[heights$sex == "Male"]
+exact <- mean(x > 79 & x <= 81)
+stdev <- sd(x > 79 & x <= 81)
+approx <- pnorm(x > 79 & x <= 81)
+exact/approx
+
+
+
+First, we will estimate the proportion of adult men that are 7 feet tall or taller.
+
+Assume that the distribution of adult men in the world as normally distributed with an average of 69 inches and a 
+standard deviation of 3 inches.
+Using this approximation, estimate the proportion of adult men that are 7 feet tall or taller, referred to as 
+seven footers. Print out your estimate; don't store it in an object.
+1- pnorm(84,69,3)
+
+
+Now we have an approximation for the proportion, call it p, of men that are 7 feet tall or taller.
+We know that there are about 1 billion men between the ages of 18 and 40 in the world, the age range for the NBA.
+Can we use the normal distribution to estimate how many of these 1 billion men are at least seven feet tall?
+
+Use your answer to the previous exercise to estimate the proportion of men that are seven feet tall or taller in 
+the world and store that value as p.
+Then round the number of 18-40 year old men who are seven feet tall or taller to the nearest integer. 
+(Do not store this value in an object.)
+p <- 1- pnorm(84,69,3)
+round(p * 10^9)
+287
+
+
+
+There are about 10 National Basketball Association (NBA) players that are 7 feet tall or higher.
+Use your answer to exercise 4 to estimate the proportion of men that are seven feet tall or taller in the world and 
+store that value as p.
+Use your answer to the previous exercise (exercise 5) to round the number of 18-40 year old men who are seven feet 
+tall or taller to the nearest integer and store that value as N.
+Then calculate the proportion of the world's 18 to 40 year old seven footers that are in the NBA. (Do not store 
+this value in an object.)
+p <- 1- pnorm(84,69,3)
+N <- round(p * 10^9)
+10/N
+
+
+
+## Change the solution to previous answer
+p <- 1 - pnorm(80, 69, 3)
+N <- round(p * 10^9)
+150/N
+
+
+

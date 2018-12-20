@@ -1,0 +1,60 @@
+
+Get column names of data frame:
+names()
+
+Get top n rows of data frame:
+head(dataframe, n)
+
+average <- sum(x) / length(x)
+SD <- sqrt( sum( (x-average)^2) / length(x)
+
+SD of sample: sd(spread)
+se of sample: sd(spread)/sqrt(length(spread))
+
+
+Proportion 
+p
+
+Take a random sample:
+sample(X, 1)
+
+Standard Unit of Value - how many standard deviation away from the avage this value is.
+z = (x-avg)/sd
+
+Observed Quantiles
+quantile(x, p)
+
+Theoretical Quantiles 
+qnorm(p, mean=mean(x), sd = sd(x))
+
+Normal Approximation - estimate the proportion of the data is between a and b.
+pnorm(x > a & x <= b, mean(x), sd(x))
+
+Expected Value 
+E(X¯) = p
+
+Standard Error
+SE(X¯) = sqrt(p*(1-p)/N)
+
+Standard Normal Variable
+Z = (X¯ - E(X¯))/ SE(X¯)
+
+Margin of Error
+2*se
+
+95% (0.975) confidence interval is 1.96 (most common value used to define margin of error)
+> qnorm(0.975)
+[1] 1.959964
+
+
+Probability of something happening is
+pnorm(0.01/se) - pnorm(-0.01/se)
+
+Spread
+p-(1-p) = 2p-1 = d
+2X¯-1
+2S^E(X¯)
+d¯ = sum(d *n) / sum(n)
+
+importing packages in R studio: 
+install.packages("Lahman")

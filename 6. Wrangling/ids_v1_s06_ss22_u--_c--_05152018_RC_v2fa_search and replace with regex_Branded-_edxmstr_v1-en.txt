@@ -1,0 +1,93 @@
+
+RAFAEL IRIZARRY: In a previous video, we defined the object problems
+containing the strings that do not appear to be in inches.
+We can see that only these many of them match the pattern we define.
+To see why this is, we show examples that expose why we don't have more
+matches.
+Here are some examples.
+We see that only two of them match.
+Why is that?
+A first problem we see immediately is that some students wrote out
+the words feet and inches.
+We can see the entries that did this with the function strict subset
+like this.
+We see several examples.
+We also see that some entries use the single quotes twice to represent
+inches instead of the double quotes.
+We can see some examples using the string subset option.
+Here they are.
+First thing we can do to solve this problem
+is to replace the different ways of representing
+inches and feet with a uniform symbol.
+We'll use a single quote for feet, and for inches, we'll
+simply not use anything.
+So 5, single quote, y will mean 5 feet and y inches.
+Now, if we no longer use the inches symbol at the end,
+we can change our pattern accordingly by taking it out of the pattern.
+So our pattern will be this then.
+If we do this replacement before the matching, we get many more matches.
+So we're going to use the string replace function to replace feet,
+ft, foot with the feet symbol.
+And we're going to replace inches in two single double quotes
+and slash double quotes with nothing.
+We run this and now we see that we get many more matches.
+However, we still have many cases to go.
+Note that in the code we just showed, we leveraged the string [? and ?]
+consistency and use the [? part. ?]
+Another problem we have are spaces.
+For example, the pattern 5, single quote, space, 4, and then
+the double quotes does not match because there
+is a space between the single quote and the 4,
+which our pattern does not permit.
+Spaces are characters and r does not ignore them.
+Here.
+You can write this function to see that there are not--
+that these two strings are not the same.
+There is a space in one and not the other.
+In regex, we can represent spaces, white space, as with backslash s.
+So to find patterns like 5, single quote, space, and then another digit,
+we can change our pattern to the following.
+We're adding backslash, backslash, s after the single quote.
+And now, we can see that we find a few examples.
+So do we need more than one regex pattern--
+one for the space and one without the space?
+No, we don't.
+We can use quantifiers for this as well.
+So we want a pattern to permit spaces but not to require them.
+Even if there are several spaces like this, we will still want it to match.
+There is a quantifier exactly for this purpose.
+In regex, the asterisk character means zero or more instances
+of the previous character.
+So let's do a quick example.
+We define some strings, and then we try out
+to see which strings we find by using the asterisk after the 1.
+We see that it finds all of these and none of these.
+Note that it matches the first string which
+has zero 1s and all the strings which have one or more 1s.
+So we can improve our pattern by adding the asterisk after the space character
+backslash, s.
+OK.
+Now there are two other similar quantifiers.
+For none or once, we can use the question mark.
+And for one or more, we can use the plus sign.
+You can see how they differ by testing it out with this code.
+
+We will actually use all three in our report
+as examples as you will see later.
+But right now, to improve our pattern, we
+can add the asterisks after the backslash, s in front
+and after the feet symbol to permit space between the feet
+symbol and the numbers.
+Now we match and we get a few more entries.
+Here's the example.
+
+We might be tempted to avoid doing this by removing
+all the spaces with the function string replace all.
+However, when doing such an operation, we
+need to make sure that it does not have some unintended effect.
+In our reported heights example, this will be a problem
+because some entries are of the form x space y with space
+separating the feet from the inches.
+If we remove all spaces, we will incorrectly turn x space y into xy,
+which implies that a 6' 1" person would turn into a 61 inch
+person instead of a 73 inch person.

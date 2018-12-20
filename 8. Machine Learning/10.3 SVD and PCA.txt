@@ -1,0 +1,92 @@
+SVD and PCA
+
+The matrix vectorization decomposition that we showed in the previous video that looks something
+like this is very much related to singular value composition and PCA.
+
+ru,i ~ pu,1 q1,i + pu,2 q2,i
+ 
+Singular value composition and principal component analysis are complicated concepts, but one way to understand them
+is to think of, for example, singular value decomposition as an algorithm that finds the vectors p and q that
+permit us to write the matrix of residuals r with m rows and n columns in the following way.
+
+
+ru,i = pu,1 q1,i + pu,2 q2,i + ... + pu,m qm,i
+
+But with the added bonus that the variability of these terms
+is decreasing and also that the p's are uncorrelated to each other.
+The algorithm also computes these variabilities so that we can know how much of the matrix's total variability
+is explained as we add new terms.
+This may permit us to see that with just a few terms, we can explain most of the variability.
+Let's see an example with our movie data.
+To compute the decomposition, will make all DNA zero.
+So we will write this code.
+
+y[is.na(y)] <- 0
+y <- sweep(y, 1, rowMeans(y))
+pca <- prcomp(y)
+
+The vectors q are called the principal components and they are stored in this matrix.
+
+dim(pca$rotation)
+
+While the p vectors which are the user's effects are stored in this matrix.
+
+dim(pca$x)
+
+The PCA function returns a component with the variability
+of each of the principal components and we can access it like this and plot it.
+
+plot(pca$sdev)
+
+We can also see that just with a few of these principal components we already explain a large percent of the data.
+
+var_explained <- cumsum(pca$sdev^2/sum(pca$sdev^2))
+plot(var_explained)
+
+So for example, with just 50 principal components we're already explaining about half the variability out of a total
+of over 300 principal components.
+To see that the principal components are actually capturing something important
+about the data, we can make a plot of for example, the first two
+principal components, but now label the points with the movie that each one of those points is related to.
+
+library(ggrepel)
+
+pcs <- data.frame(pca$rotation, name = colnames(y))
+
+highlight <- filter(pcs, PC1 < -0.1 | PC1 > 0.1 | PC2 < -0.075 | PC2 > 0.1)
+
+pcs %>%  ggplot(aes(PC1, PC2)) + geom_point() + 
+  geom_text_repel(aes(PC1, PC2, label=name),
+                  data = highlight, size = 2)
+
+
+Just by looking at the top three in each direction, we see meaningful patterns.
+The first principle component shows the difference between critically acclaimed movies on one side.
+Here are the one extreme of the principal component.
+
+pcs %>% select(name, PC1) %>% arrange(PC1) %>% slice(1:10)
+
+
+You can see Pulp Fiction, Seven, Fargo, Taxi Driver, and Hollywood blockbusters on the other.
+
+pcs %>% select(name, PC1) %>% arrange(desc(PC1)) %>% slice(1:10)
+
+So this principle component has critically acclaimed movies on one side and blockbusters on the other.
+It's separating out movies that have structure
+and they're determined by users that like these more than these and others that like these more than that.
+We can also see that the second principle component also seems to capture structure in the data.
+If we look at one extreme of this principle component,
+we see arts and independent films such as Little Miss Sunshine, the Truman Show, and Slumdog Millionaire.
+
+pcs %>% select(name, PC2) %>% arrange(PC2) %>% slice(1:10)
+
+When we look at the other extreme, we see what I would call nerd favorites, The Lord of the Rings,
+Star Wars, The Matrix.
+
+pcs %>% select(name, PC2) %>% arrange(desc(PC2)) %>% slice(1:10)
+
+So using principal component analysis, we have shown that a matrix factorisation approach can
+find important structure in our data.
+Now to actually fit the matrix factorization model that we presented earlier that takes into account that there
+is missing data, that there's missing cells in the matrix, is a bit more complicated.
+For those interested we recommend trying the recommended lab package which fits these models.

@@ -1,0 +1,70 @@
+
+Linear Regression for Prediction
+
+Linear regression can be considered a machine learning algorithm.
+As you will see, it is too rigid to be useful in general, but for some challenges it works rather well.
+It also serves as a baseline approach.
+If you can't beat it with a more complex approach, you probably want to stick to linear regression.
+To quickly make the connection between regression and machine learning,
+we will reformulate Galten study with heights a continuous outcome.
+We're going to load it up using this code.
+
+library(HistData)
+
+galton_heights <- GaltonFamilies %>%
+  filter(childNum == 1 & gender == "male") %>%
+  select(father, childHeight) %>%
+  rename(son = childHeight)
+  
+  
+Suppose you're tasked with building a machine learning
+algorithm that predicts the son's height y using the father's height x.
+Let's start by generating some testing and train sets using this code.
+
+
+library(caret)
+y <- galton_heights$son
+test_index <- createDataPartition(y, times = 1, p = 0.5, list = FALSE)
+
+train_set <- galton_heights %>% slice(-test_index)
+test_set <- galton_heights %>% slice(test_index)
+
+
+In this case, if we're ignoring the father's height and guessing
+the son's height, we would guess the average height of son's.
+So our prediction would be the average, which we can get this way.
+
+avg <- mean(train_set$son)
+avg
+
+R squared loss is about 6.60 which you can see by typing this code.
+
+mean((avg - test_set$son)^2)
+
+Now can we do better?
+In the regression course, we learned that if a pair xy follows
+a bivariate normal distribution, as the son and father's heights do,
+the conditional expectation which is what we want to estimate in machine learning is equivalent to the regression line.
+
+
+if the pair (X, Y) follow a bivariate normal distribution
+then conditional expectation is equivalent to the regression line
+f(x) = E(Y | X = x) = B0 + B1x
+
+
+We also introduced least squares as a method for estimating the slope and intercept.
+We can write this code to quickly get that fitted model.
+
+fit <- lm(son~father, data=train_set)
+fit$coef
+
+This gives us an estimate of the conditional expectation, which is a simple formula.
+It's 38, plus 0.47x.
+
+f^(x) = 38 + 0.47x
+
+y_hat <- fit$coef[1] + fit$coef[2]*test_set$father
+mean((y_hat - test_set$son)^2)
+
+We can see that this does indeed provide an improvement over our guessing approach which gave us a loss of 6.6.
+Now we get a loss of 4.78, a little bit lower.

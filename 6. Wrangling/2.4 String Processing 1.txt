@@ -1,0 +1,103 @@
+
+String Processing
+
+parse_number()
+
+By going over these case studies, we'll cover some of the most common tasks in string processing, including:
+removing unwanted characters from text,
+extracting numerical values from texts, 
+finding and replacing characters,
+extracting specific parts of strings, 
+converting free-form text to more uniform formats, 
+and splitting strings into multiple values.
+
+----------------------------------------------------------------------------------------------
+
+To define strings in R, we can use either double quotes, like this, or single quotes, like this.
+> s <- "Hello"
+> s <- 'Hello'
+
+> s <- '10"'
+
+> cat(s)
+10"
+
+> s <- "5'"
+
+
+Note that this actually doesn't give you an error. If we type one of the above strings into R,
+it will get stuck waiting for you to close the open quote, and you'll have to esc button.
+> s <= "5'10""
++
+>
+
+Escape using \
+> x <- '5\'10"'
+> cat(s)
+5'10"
+
+----------------------------------------------------------------------------------------------
+
+> murders_raw$population[1:3]
+[1] "4,853,875" "737,709" "6,817,565"
+
+> as.numeric(murders_raw$population[1:3])
+[1] NA NA NA
+Warning message:
+NAs introduced by coercion
+
+Remove the "," pattern
+
+In general, string processing tasks can be divided into detecting, locating, extracting,
+or replacing patterns in strings.
+
+In our example, we need to locate the comma and replace them with an empty character.
+Base R includes function to perform all these tasks.
+However, they don't follow a unifying convention, which makes it a bit hard to memorize and use.
+The stringr package basically repackages this functionality, but using a more consistent approach of naming functions
+and ordering their arguments.
+
+The stringr package basically repackages this functionality, but using a more consistent approach of naming functions
+and ordering their arguments.
+
+
+For example, in stringr, all the string processing functions start with str_,
+which means that if you type this and then hit Tab,
+R will autocomplete and show you all the available functions,
+which means we don't necessarily have to memorize all the function names.
+
+Another advantage is that the string is always
+the first argument, which means we can move more easily using the pipe.
+
+----------------------------------------------------------------------------------------------
+
+In a previous video, we scraped the web and created an object called murders_raw.
+This was a table.
+We noted that columns needed to be parsed from characters into numbers, but that commas were making it hard.
+
+We can use the str_detect() function to see that the columns have commas using this code.
+> commas <- function(x) any(str_detect(x, ","))
+> murders_raw %>% summarize_all(funs(commas))
+state	population	total	murders	gun_murders	gun_ownernship	total_rate	murder_rate	gun_murder_rate
+FALSE	TRUE		TRUE	TRUE	TRUE		FALSE		FALSE		FALSE		FALSE
+
+We can then use the str_replace_all function to remove them using this code.
+
+> test_1 <- str_replace_all(murders_raw$population, ",", "")
+> test_1 <- as.numeric(test_1)
+
+
+We can then use the mutate_all to apply this operation to each column, since it won't affect the columns without commas.
+
+It turns out that this operation is so common--removing commas-- that stringr includes the function parse_number()
+specifically meant to remove non-numeric characters before coercing. So we could have written it all like this.
+
+> test_2 <- parse_number(murder_raw$population)
+> identital(test_1, test_2)
+
+So we can obtain our desired table using the following code.
+Here we're going to use parse_number().
+
+> murders_new <- muders_raw %>% mutate_at(2:3, parse_number)
+> murders_new %>% head
+

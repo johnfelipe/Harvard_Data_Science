@@ -1,0 +1,171 @@
+
+Quantile-Quantile Plots
+
+If a distribution is well approximated by the normal distsribution, we can have a very useful and short summary.
+To check if, in fact, it is a good approximation, we can use quantile-quantile plots, or q-q plots.
+
+We start by defining a series of proportion, for example:
+p = 0.05
+p = 0.1
+p = 0.15...0.95
+
+Once this is defined for each p, we determine the value q, so that the proportion of the values 
+in the data below q is p.
+The q's are referred to as the quantiles.
+Example:
+For the male heights data, we have that 50% of the data is below 69.5 inches.
+> mean(x <= 69.5)
+[1] 0.515
+This means that if p = 0.5, then q = 69.5.
+
+If the quantiles of the data match the quantiles for the normal distribution, then it must be because the data
+is approximated by a normal distribution.
+
+> observed_quantiles <- quantile(x, p)
+
+To obtain the theoretical normal distribution quantiles with the corresponding average and standard deviation, 
+we use the qnorm function:
+> theoretical_quantiles <- qnorm(p, mean = mean(x), sd = sd(x))
+
+To see if they match or not, we can plot them against each other and draw an identiy line to see if the points 
+fall on the line:
+> plot(theoretical_quantiles, observed_quantiles)
+> abline(0,1)
+
+Note that the points fall almost on the line, meaning that the normal approximation is a pretty good approximation.
+
+This will be simplier if we use standard units.  If we use standard units, we don't have to define the mean
+and the SD in the fnction qnorm. And it will simplify and look like this:
+> observed_quantiles <- quantile(z,p)
+> theoretical_quantiles <- qnorm(p)
+> plot(theoretical_quantiles, observed_quantiles)
+> abline(0,1)
+
+
+----------------------------------------------------------------------------------
+
+Percentiles
+
+
+Percentiles are the special cases of quantiles that are commonly used.
+
+p = 0.01
+p = 0.02...0.99
+
+p = 0.25
+25th percentile
+
+50th percentile also known as median.  Note that for the normal distribution, the median and the average are the same.
+But this is not generally the case.
+
+quartiles - which are obtained when we set 
+p = 0.25
+p = 0.50
+p = 0.75
+
+----------------------------------------------------------------------------------
+
+Boxplots
+
+In the previous murders data, we have learned that the normal approximation does not apply here.
+We can see it in the histogram and the qq plot.  In this case, the histogram or smooth density plot,
+would serve as a relatively succinct summary.
+
+Now suppose you were trying to describe this data to someone who is used to receiving just two numbers,
+the average and the SD.  In this case, that's not an appropriate summary, but they still want something compact.
+
+John Tookey's advice:
+Provide a five number summary composed of the range along with the quartiles, 25th, 50th, and 75th percentile.
+5 number summary:
+  range
+  quartiles
+  
+He also suggests that we ignore outlier when computing the range and instaed plot these as independent points.
+
+Also suggests that we plot this five number summary as a box with whiskers.
+The box is defined by the 25th and 75th percentiles and the whiskers are showing the range.
+The distance between these two percentiles is called the interquartile range.
+The two points that are outliers are shown separately and the median is shown with a horizontal line with the box.
+
+From just a simple plot, we know that the median is about 2.5, that the distribution is not symmetic, and that
+the range is 0 to 5 for the great majority of states with two exceptions, the two outliers.
+
+
+----------------------------------------------------------------------------------
+
+Distribution of Female Heights
+
+The exploratory plots reveal that the approximation is not as useful because we see the density plot has a second 
+bump around 67. Looks like a little shoulder. Also the q-q plot shows that the highest points tend
+to be taller than expected for the normal distribution.
+So we should provide a histogram rather than just the average and SD for female heights.
+
+If we look at the female heights distributions from other sources, other than our own data, we do find that
+they are well approximated for the normal distribution.  So why did we see a second bump in our data?
+Bad data? This is a good example of how data visualization has helped us discover a potential flaw in our data.
+
+
+----------------------------------------------------------------------------------
+
+Assessment
+
+
+Define a variable male that contains the male heights.
+Define a variable female that contains the female heights.
+Report the length of each variable.
+library(dslabs)
+data(heights)
+male <- heights$height[heights$sex=="Male"]
+female <- heights$height[heights$sex=="Female"]
+length(male)
+length(female)
+
+
+
+Suppose we can't make a plot and want to compare the distributions side by side. If the number of data points 
+is large, listing all the numbers is inpractical. A more practical approach is to look at the percentiles. We 
+can obtain percentiles using the quantile function like this
+
+library(dslabs)
+data(heights)
+quantile(heights$height, seq(.01, 0.99, 0.01))
+
+Create two five row vectors showing the 10th, 30th, 50th, 70th, and 90th percentiles for the heights of each sex 
+called these vectors female_percentiles and male_percentiles.
+Then create a data frame called df with these two vectors as columns. The column names should be female and male 
+and should appear in that order. As an example consider that if you want a data frame to have column names names 
+and grades, in that order, you do it like this:
+df <- data.frame(names = c("Jose", "Mary"), grades = c("B", "A"))
+Take a look at the df by printing it. This will provide some information on how male and female heights differ.
+
+library(dslabs)
+data(heights)
+male <- heights$height[heights$sex=="Male"]
+female <- heights$height[heights$sex=="Female"]
+male_percentiles <- quantile(male, c(0.1, 0.3, 0.5, 0.7, 0.9))
+female_percentiles <- quantile(female, c(0.1, 0.3, 0.5, 0.7, 0.9))
+df <- data.frame(female = female_percentiles, male = male_percentiles)
+df
+
+
+Study the boxplots summarizing the distributions of populations sizes by country.
+
+Which continent has the country with the largest population size?
+Asia
+
+Which continent has median country with the largest population?
+Africa
+
+Again, look at the boxplots summarizing the distributions of populations sizes by country. To the nearest million, 
+what is the median population size for Africa?
+10 million
+
+Examine the following boxplots and report approximately what proportion of countries in Europe have populations 
+below 14 million:
+0.75
+
+Based on the boxplot, if we use a log transformation, which continent shown below has the largest interquartile range?
+America
+
+
+

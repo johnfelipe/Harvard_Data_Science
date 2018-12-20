@@ -1,0 +1,46 @@
+
+Case Study: Trends in World Health and Economics
+
+gapminder.org
+
+---------------------------------------------------------------------------------------------
+
+Gapminder Dataset
+
+
+>library(dslabs)
+>data(gapminder)
+>head(gapminder)
+
+which has the higher mortality rate?
+> gapminder %>% 
++ filter(year == 2015 & country %in% c("Sri Lanka", "Turkey")) %>%
++ select(country, infant_mortality)
+	country		infant_mortality
+1	Sri Lanka	8.4
+2	Turkey		11.6
+
+---------------------------------------------------------------------------------------------
+
+
+Life Expenctancy and Fertility Rates
+
+
+Fertility rate : the average number of children per woman
+
+> ds_theme_set()
+> filter(gapminder, year == 1962) %>%
++ 	ggplot(aes(fertility, life_expenctancy)) +
++	geom_point()
+
+
+Now add color to continent:
+> filter(gapminder, year == 1962) %>%
++ 	ggplot(aes(fertility, life_expenctancy, color = continent)) +
++	geom_point()
+
+---------------------------------------------------------------------------------------------
+
+
+
+

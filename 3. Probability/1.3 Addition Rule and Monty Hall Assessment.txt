@@ -1,0 +1,171 @@
+
+The Addition Rule
+
+The addition rule gives you another way to compute the probability of getting a natural 21.
+The addition rule tells us that the probability of A or B, because you can get to 21 in two ways.
+You can get either a face card and then an ace, or you can get an ace and then a face card.
+So what is the probability of that OR? A or B?
+Pr(A or B) = Pr(A) + Pr(B) - Pr(A and B)
+
+Think of the Venn diagram: 
+We add the A circle plus B circle, then subtract the middle part.
+
+In the case of natural 21, the intersection is empty since both can't happen.
+You can't have both an ace and then a face card, and then at the same time have a face card and then an ace.
+Those two things can't happen at the same time.
+
+The probability of an ace followed by a face card is
+1/13 x 16/51
+
+And the probability of a face card followed by an ace is
+16/52 x 4/51
+
+~0.05
+
+
+-------------------------------------------------------------------------------------------------
+
+The Monty Hall problem
+
+Monty Hall was the host of 1970s game show Let's Make a Deal.
+If the contestant did not pick the prize door on his or her first try, Monty Hall would open one of the
+two remaining doors and show the contestant that there was no prize behind that door.  So you're left
+with two doors, the one you picked and one door that you do not know what's behind it. Would you switch doors?
+
+The probability if you stick to the original door, your chances of winning a prize is 1 in 3.
+But if you switch, your chances double to 2 in 3
+Many people incorrectly think both chances are 1 in 2, which is wrong.
+
+Strategy: Stick to the same door
+> b<- 10000
+> stick <- replicate(B, {
++	doors, as.character(1:3)
++	prize <- sample(c("car","goat","goat"))
++	prize_door <- doors[prize == "car"]
++	my_pick <- sample(doors, 1)
++	show <- sample(doors[!doors %in% c(my_prize, prize_door)], 1)
++	stick <- my_pick
++	stick == prize_door
++ })
+> mean(stick)
+[1] 0.3357
+So this is 1/3.
+
+Strategy: switch doors
+> b<- 10000
+> switch <- replicate(B, {
++	doors, as.character(1:3)
++	prize <- sample(c("car","goat","goat"))
++	prize_door <- doors[prize == "car"]
++	my_pick <- sample(doors, 1)
++	show <- sample(doors[!doors %in% c(my_prize, prize_door)], 1)
++	stick <- my_pick
++	switch <- doors[!doors %in% c(my_pick, show)]
++	switch == prize_door
++ })
+> mean(switch)
+[1] 0.6717
+which is about 2/3
+
+-------------------------------------------------------------------------------------
+
+Assessment
+
+1.
+Two teams, say the Cavs and the Warriors, are playing a seven game championship series. The first to win four games wins the series. The teams are equally good, so they each have a 50-50 chance of winning each game.
+If the Cavs lose the first game, what is the probability that they win the series?
+Assign the number of remaining games to the variable n.
+Use the list function to create a list of game outcomes, where 0 indicates a loss for the Cavs and 1 indicates a win for the Cavs. Assign this value to the variable l.
+Use the expand.grid function to create a data frame containing all the possibilities for outcomes of the remaining games.
+Use the rep function within the expand.grid function to indicate the number of columns the results data frame should contain.
+Use the rowSums function to identify which combinations of game outcomes result in the Cavs winning the number of games necessary to win the series.
+Use the mean function to calculate the proportion of outcomes that result in the Cavs winning the series.
+# Assign a variable 'n' as the number of remaining games.
+n <- 6
+
+# Assign a variable 'l' to a list of possible game outcomes, where 0 indicates a loss and 1 indicates a win for the Cavs. 
+l <- list(c(0,1))
+
+
+# Create a data frame named 'possibilities' that contains all possible outcomes for the remaining games.
+possibilities <- expand.grid(rep(l, n))
+
+
+# Create a vector named 'results' that indicates whether each row in the data frame 'possibilities' contains enough wins for the Cavs to win the series.
+results <- rowSums(possibilities) >=4
+
+# Calculate the proportion of 'results' in which the Cavs win the series. Print the outcome to the console.
+mean(results)
+  
+2.
+Confirm the results of the previous question with a Monte Carlo simulation to estimate the probability of the Cavs winning the series after losing the first game.
+Use the replicate function to replicate the sample code for B <- 10000 simulations.
+Use the sample function to simulate a series of 6 games with random, independent outcomes of either a loss for the Cavs (0) or a win for the Cavs (1).
+Use the sum function to indicate which of the simulated series contained at least 4 wins for the Cavs.
+Use the mean function to find the proportion of simulations in which the Cavs win at least 4 of the remaining games.
+# The variable `B` specifies the number of times we want the simulation to run. Let's run the Monte Carlo simulation 10,000 times.
+B <- 10000
+
+# Use the `set.seed` function to make sure your answer matches the expected result after random sampling.
+set.seed(1)
+
+# Create an object called `results` that replicates the sample code for `B` iterations and tallies the number of simulated series that contain at least four wins for the Cavs.
+results <- replicate(B, {
+  game <- sample(c(0,1), 6, replace = TRUE)
+  sum(game) >= 4
+})
+
+# Calculate the frequency out of `B` iterations that the Cavs won at least four games in the remainder of the series. Print your answer to the console.
+mean(results)
+
+
+3.
+Two teams, A and B, are playing a seven series game series. Team A is better than team B and has a p>0.5 chance of winning each game.
+Use the function sapply to compute the probability, call it Pr of winning for p <- seq(0.5, 0.95, 0.025).
+Then plot the result plot(p, prob).
+# Let's assign the variable 'p' as the vector of probabilities that team A will win.
+p <- seq(0.5, 0.95, 0.025)
+
+# Given a value 'p', the probability of winning the series for the underdog team B can be computed with the following function based on a Monte Carlo simulation:
+prob_win <- function(p){
+  B <- 10000
+  result <- replicate(B, {
+    b_win <- sample(c(1,0), 7, replace = TRUE, prob = c(1-p, p))
+    sum(b_win)>=4
+    })
+  mean(result)
+}
+
+# Apply the 'prob_win' function across the vector of probabilities that team A will win to determine the probability that team B will win. Call this object 'Pr'.
+pr <- sapply(p, prob_win)
+
+
+# Plot the probability 'p' on the x-axis and 'Pr' on the y-axis.
+plot(p, pr)
+
+
+
+4.
+Repeat the previous exercise, but now keep the probability that team A wins fixed at p <- 0.75 and compute the probability for different series lengths. For example, wins in best of 1 game, 3 games, 5 games, and so on through a series that lasts 25 games.
+Use the seq function to generate a list of odd numbers ranging from 1 to 25.
+Use the function sapply to compute the probability, call it Pr, of winning during series of different lengths.
+Then plot the result plot(p, Pr).
+# Given a value 'p', the probability of winning the series for the underdog team B can be computed with the following function based on a Monte Carlo simulation:
+prob_win <- function(N, p=0.75){
+      B <- 10000
+      result <- replicate(B, {
+        b_win <- sample(c(1,0), N, replace = TRUE, prob = c(1-p, p))
+        sum(b_win)>=(N+1)/2
+        })
+      mean(result)
+    }
+
+# Assign the variable 'N' as the vector of series lengths. Use only odd numbers ranging from 1 to 25 games.
+N <- seq(1, 25, 2)
+
+
+# Apply the 'prob_win' function across the vector of series lengths to determine the probability that team B will win. Call this object `Pr`.
+Pr <- sapply(N, prob_win)
+
+# Plot the number of games in the series 'N' on the x-axis and 'Pr' on the y-axis.
+plot(N, Pr)

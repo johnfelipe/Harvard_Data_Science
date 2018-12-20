@@ -1,0 +1,43 @@
+Vectors
+
+which is the biggest state?
+>murders$state[which.max(murders$population)]
+[1] "California"
+
+How many people does it have?
+>max(murders$population)
+[1] 37253956
+
+In R, arithmetic operations on vectors occur element-wise.
+Ex: we have heights in inches
+>heights <- c(69,62,66,70,70,73,67,73,67,70)
+
+Convert to cm
+>heights * 2.54
+...
+
+If we want to compute how many inches taller or shorter than average,
+we can subtract the average from every entry. ex: average is 69
+>heights - 69
+[1] 0 -7 -3 1 1 4 -2 4 -2 1
+
+To compute the murder rate, murders for every 100,000 people (total divided by the population, multipled by 100,000)
+>murder_rate <- murders$total/murders$population*100000
+so the total for each state is going to be divided by the population for each state, element-wise, one by one.
+And then multiply those values by 100,000 to get it in the right units.
+
+Now look at the states ordered by murlder rate, in decresing order:
+>murders$state[order(murder_rate, decreasing=TRUE)]
+
+to create data frame:
+> temp <- c(35, 88, 42, 84, 81, 30)
+> city <- c("Beijing", "Lagos", "Paris", "Rio de Janeiro", "San Juan", "Toronto")
+> city_temps <- data.frame(name = city, temperature = temp)
+
+create numbers
+> x <- (1:100)
+compute sum  (ex: 1 + 1/2^2 + 1/3^2 + ... + 1/100^2)
+> sum(1/x^2)
+
+
+

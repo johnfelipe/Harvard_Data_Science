@@ -1,0 +1,405 @@
+
+Confidence Intervals
+
+A version of confidence intervals that are commonly seen come from the ggplot geometry geom_smooth().
+Here is an example:
+> data("nhtemp")
+> data.frame(year = as.numeric(time(nhtemp)), temperature = as.numeric(nhtemp)) %>%
++	ggplot(aes(year, temperature)) +
++	geom_point() +
++	geom_smooth() +
++	ggtile("Average Yearly Temperatures in New Haven")
+
+
+This shaded area is created using the concept of confidence intervals.
+
+
+In our competition, we were asked to give an interval.
+If the interval you submit includes the actual proportion p, you get half the money you spent on your poll
+back and pass to the next stage of the competition.
+One way to pass to the second round of the competition
+to report a very large interval-- for example, the interval 0 to 1.
+This is guaranteed to include p.
+[0, 1]
+
+However, with an interval this big, we have no chance of winning the competition.
+Similarly, if you are an election forecaster and predict the spread will be between negative 100 and 100,
+you'll be ridiculed for stating the obvious.
+
+Even a small interval such as saying that the spread will be between minus 10% and 10% will not be considered serious.
+On the other hand, the smaller the interval we report, the smaller our chance of passing to the second round.
+
+We want to be somewhere in between. Confidence intervals will help us get there.
+
+
+Similarly if we are asked to create an interval with, say, a 95% chance of including p, we can do that as well.
+These are called 95% confidence intervals.
+
+Note that when pollsters report an estimate and a margin of error, they are, in a way, reporting a 95% confidence interval.
+
+We want to know the probability that the interval X-bar minus 2 times
+the estimated standard error to X-bar plus 2 times its estimated standard error contains the actual proportion p.
+[X¯  - 2S^E(X¯),  X¯ + 2S^E(X¯)]
+
+
+Everytime we take a sample, they change.  Let's show by Monte Carlo simulation.
+> p < 0.45
+> N <- 1000
+> X <- sample(c(0,1), size=N, replace=TRUE, prob=c(1-p,p))
+> X_hat <- mean(X)
+> SE_hat <- sqrt(X_hat*(1-X_hat)/N)
+> c(X_hat - 2*SE_hat, X_hat + 2*SE_hat)
+[1] 0.4105907  0.4734093
+
+Run again and we get something different because of random variable:
+> X <- sample(c(0,1), size=N, replace=TRUE, prob=c(1-p,p))
+> X_hat <- mean(X)
+> SE_hat <- sqrt(X_hat*(1-X_hat)/N)
+> c(X_hat - 2*SE_hat, X_hat + 2*SE_hat)
+[1] 0.4304697  0.4935313
+
+
+To determine the probability that the interval includes p, we need to compute this probability.
+
+Pr(X¯  - 2S^E(X¯) <= p <=  X¯ + 2S^E(X¯))
+
+By subtracting and dividing the same quantities in all parts of the equation, we get that the equation
+is equivalent to this.
+
+Pr( -2  <=  (X¯ - p)/ S^E(X¯)  <= 2 )
+
+
+The term in the middle is an approximately normal random variable
+with expected value 0 and standard error 1, which
+we have been denoting with capital Z.
+
+Pr( -2  <=  Z  <= 2 )
+
+
+So what we have is, what is the probability of a standard normal variable being between minus 2 and 2?
+And this is, we know, about 95%.
+
+So we have a 95% confidence interval.
+
+Note that if we want to have a larger probability, say 99%, a 99% confidence interval, we need to multiply by whatever
+z satisfies the following equation.
+Pr( -z  <=  Z  <= z )  = 0.99
+
+Note that by using the quantity that we get by typing this code,
+which is about 2.576, will do it, because by definition the pnorm of what
+we get when we type qnorm(0.995) is by definition 0.995.
+> z <- qnorm(0.995)
+> z
+[1] 2.575829
+> pnorm(qnorm(0.995))
+[1] 0.995
+
+And by symmetry, pnorm of 1 minus qnorm(0.995) is 1 minus 0.995.
+
+> pnorm(1-qnorm(0.995))
+[1] 0.05753257
+
+So now we compute pnorm minus pnorm minus z, we get 99%. This is what we wanted.
+> pnorm(z)-pnorm(-z)
+[1] 0.99
+
+We can use this approach for any percentile q. We use 1 minus (1 minus q) divided by 2.
+1-(1-q)/2
+
+Why this number-- because of what we just saw, 1 minus (1 minus q)
+divided by 2 plus (1 minus q) divided by 2 equals q.
+1-(1-q)/2+(1-q)/2=q
+
+
+Also note that to get exactly 0.95, we actually use a slightly smaller number than 2.
+How do we know? We type qnorm of 0.975 and we see that the value
+that we should be using to get exactly a 95% confidence interval is 1.96.
+> qnorm(0.975)
+[1] 1.959964
+
+-----------------------------------------------------------------------------------------------------
+
+A Monte Carlo Simulation for Confidence Intervals
+
+
+We can run a Monte Carlo simulation to confirm that, in fact, a 95% confidence interval includes p 95%
+of the time.
+> B <- 10000
+> inside <- replicate(B, {
++	X <- sample(c(0,1), size=N, replcae=TRUE, prob=c(1-p,p))
++	X_hat <- mean(X)
++	SE_hat <- sqrt(X_hat*(1-X_hat)/N)
++	between(p, X_hat - 2*SE_hat, X_hat + 2*SE_hat)
++ })
+> mean(inside)
+[1] 0.9522
+
+But now, we're going to actually construct the confidence interval inside the call to replicate.
+And in the very final line, we're going to ask, is p included in the interval.
+We're going to return either true or false. To compute how often it happened, we compute the mean
+of that vector of true and false. We run a simulation and we get 0.9522.
+
+Plot this.  The confidence intervals vary because these are random variables.
+Most of the time, p is inside the confidence interval. P does not move because it is not a random variable.
+And once in a while we actually miss p (in red).  We should only see about 5% of the intervals in red
+because they're 95% confidence intervals.
+
+----------------------------------------------------------------------------------------
+
+The Correct Language
+
+When using the theory we just described, it is important to remember that it is the intervals that
+are at random, not p.
+
+So the 95% relates to the probability that the random interval falls on top of p.
+
+Saying that p has a 95% chance of being between this and that is technically an incorrect statement-- 
+again, because p is not random.
+
+
+----------------------------------------------------------------------------------------
+
+Power
+
+
+Pollsters do not become successful for providing correct confidence intervals, but rather for predicting who will win.
+When we took a sample of size 25, the confidence interval for the spread was-- and we can reconstruct it here--
+from negative 0.93 to 0.85. This includes 0 and 0 implies a tie.
+
+> N <- 25
+> X_hat <- 0.48
+> (2*X_hat - 1) + c(-2,2)*2*sqrt(X_hat*(1-X_hat)/sqrt(N))
+[1] -0.9337114  0.8537114
+
+
+If we were pollsters and we were forced to make a declaration about the election, we would have
+no choice but to say it's a tossup.
+
+A problem with our poll results is that given the sample size and the value of p, we would have to sacrifice
+on the probability of an incorrect call to create an interval that does not include 0, an interval that
+makes a call of who's going to win.
+
+The fact that our interval includes 0, it does not mean that this election is close.
+It only means that we have a small sample size.
+
+In statistical textbooks, this is called lack of power.
+In the context of polls, power can be thought of as: the probability of detecting a spread different from 0.
+
+By increasing our sample size, we lower our standard error, and therefore have a much better chance of detecting
+the direction of the spread.
+
+---------------------------------------------------------------------------------------------------------
+
+P-Values
+
+They are related to confidence intervals, so we introduce the concept here.
+
+Let's consider the blue and red bead example again.
+Suppose that rather than wanting to estimate the spread or the proportion of blue, 
+I'm interested only in the question, are there more blue beads than red beads?
+
+Another way to ask that is, is 2p minus 1 bigger than 0? is 2p-1 > 0? (Is the spread bigger than 0?) 
+
+So suppose we take a random sample of, say, 100 beads, and we observe 52 blue beads.
+This gives us a spread of 4%.
+
+This seems to be pointing to there being more blue beads than red beads,
+because 4% is larger than 0. 52% is larger than 48%. However, as data scientists, we need to be skeptical.
+We know there is chance involved in this process, and we can get a 52 even when the actual spread is 0.
+
+The null hypothesis is the skeptic's hypothesis.
+In this case, it would be the spread is 0.
+
+We have observed a random variable 2 times X-bar minus 1, which in this case
+is 4%:
+2X¯-1 = 0.04
+
+and the p-value is the answer to the question, how
+likely is it to see a value this large when the null hypothesis is true?
+
+So we write, what's the probability of X-bar minus 0.5 being bigger than 2%? That's the same as asking, 
+what's the chance that the spread is 4 or more?
+Pr(|X¯-0.5| > 0.02)
+
+The null hypothesis is that the spread is 0 or that p is a half.
+Under the null hypothesis, we know that this quantity here, the square root
+of n times X-bar minus 0.5 divided by the square root of 0.5 times 1 minus 0.5, is a standard normal.
+
+Under the null hypothesis:
+sqrt(N) * ( (X¯-0.5)/sqrt(0.5(1-0.5)) )
+is standard normal
+
+We've taken a random variable and divided it by its standard error after subtracting its expected value.
+
+So we can compute the probability, which is a p-value, using this equation, which reduces to this equation, where
+z is a standard normal.
+
+Pr( sqrt(N) * ( (X¯-0.5)/sqrt(0.5(1-0.5)) )   >  sqrt(N) * ( 0.02/sqrt(0.5(1-0.5)) )  )
+
+Pr( sqrt(N) *  ( (|X¯-0.5|)/0.5 )  >  Z )
+
+Now we can use code to compute this:
+> N = 100
+> Z <- sqrt(N)*0.02/0.5
+> 1 - (pnorm(z) - pnorm(-z))
+[1] 0.6891565
+
+We compute the probability, which is equal to 69% in this case. This is the p-value.
+
+In this case, there's actually a large chance of seeing 52 blue beads or more
+under the null hypothesis that there is the same amount of blue beads as red beads.
+
+So the 52 blue beads are not very strong evidence, are not very convincing, if we want to make the case that there's
+more blue beads than red beads.
+
+Note that there's a close connection between p-values and confidence intervals:
+
+If a 95% confidence interval of the spread does not include 0,
+we know (by math) that the p-value must be smaller than 1 minus 95%, or 0.05.
+
+However, in general, we prefer reporting confidence intervals
+over p-values, since it gives us an idea of the size of the estimate.
+The p-value simply reports a probability and says nothing
+about the significance of the finding in the context of the problem.
+
+-------------------------------------------------------------------------------------------------------------
+
+Assessment
+
+1.
+For the following exercises, we will use actual poll data from the 2016 election. The exercises will contain pre-loaded data from the dslabs package.
+
+library(dslabs)
+data("polls_us_election_2016")
+We will use all the national polls that ended within a few weeks before the election.
+
+Assume there are only two candidates and construct a 95% confidence interval for the election night proportion p.
+Use filter to subset the data set for the poll data you want. Include polls that ended on or after October 31, 2016 (enddate). Only include polls that took place in the United States. Call this filtered object polls.
+Use nrows to make sure you created a filtered object polls that contains the correct number of rows.
+Extract the sample size N from the first poll in your subset object polls.
+Convert the percentage of Clinton voters (rawpoll_clinton) from the first poll in polls to a proportion, X_hat. Print this value to the console.
+Find the standard error of X_hat given N. Print this result to the console.
+Calculate the 95% confidence interval of this estimate using the qnorm function.
+Save the lower and upper confidence intervals as an object called ci. Save the lower confidence interval first.
+# Load the data
+data(polls_us_election_2016)
+
+# Generate an object `polls` that contains data filtered for polls that ended on or after October 31, 2016 in the United States
+#polls_us_election_2016
+polls <- polls_us_election_2016 %>% filter(enddate >= "2016-10-31" & state=='U.S.') 
+
+# How many rows does `polls` contain? Print this value to the console.
+nrow(polls)
+
+# Assign the sample size of the first poll in `polls` to a variable called `N`. Print this value to the console.
+N <- polls$samplesize[n=1]
+N
+
+# For the first poll in `polls`, assign the estimated percentage of Clinton voters to a variable called `X_hat`. Print this value to the console.
+head(polls, 1)
+X_hat <- 47/100
+print(X_hat)
+
+# Calculate the standard error of `X_hat` and save it to a variable called `se_hat`. Print this value to the console.
+se_hat <- sqrt(X_hat*(1-X_hat)/N)
+print(se_hat)
+
+# Use `qnorm` to calculate the 95% confidence interval for the proportion of Clinton voters. Save the lower and then the upper confidence interval to a variable called `ci`.
+ci <- c(qnorm(1-.975,mean=X_hat,sd=se_hat),qnorm(.975,mean=X_hat,sd=se_hat))
+ci
+
+
+
+2.
+Create a new object called pollster_results that contains the pollster's name, the end date of the poll, the proportion of voters who declared a vote for Clinton, the standard error of this estimate, and the lower and upper bounds of the confidence interval for the estimate.
+Use the mutate function to define four new columns: X_hat, se_hat, lower, and upper. Temporarily add these columns to the polls object that has already been loaded for you.
+In the X_hat column, convert the raw poll results for Clinton to a proportion.
+In the se_hat column, calculate the standard error of X_hat for each poll using the sqrt function.
+In the lower column, calculate the lower bound of the 95% confidence interval using the qnorm function.
+In the upper column, calculate the upper bound of the 95% confidence interval using the qnorm function.
+Use the select function to select the columns from polls to save to the new object pollster_results.
+# The `polls` object that filtered all the data by date and nation has already been loaded. Examine it using the `head` function.
+head(polls)
+
+# Create a new object called `pollster_results` that contains columns for pollster name, end date, X_hat, lower confidence interval, and upper confidence interval for each poll.
+pollster_results <- polls %>% mutate(X_hat=polls$rawpoll_clinton/100, se_hat=sqrt(X_hat*(1-X_hat)/polls$samplesize), lower = X_hat-qnorm(0.975)*se_hat, upper = X_hat+qnorm(0.975)*se_hat) %>% select(pollster, enddate, X_hat, se_hat, lower, upper)
+head(pollster_results, 1)
+
+
+3.
+The final tally for the popular vote was Clinton 48.2% and Trump 46.1%. Add a column called hit to pollster_results that states if the confidence interval included the true proportion p=0.482 or not. What proportion of confidence intervals included p?
+Use the mutate function to define a new variable called 'hit'.
+Use logical expressions to determine if each values in lower and upper span the actual proportion.
+Use the mean function to determine the average value in hit and summarize the results using summarize.
+Save the result as an object called avg_hit.
+# The `pollster_results` object has already been loaded. Examine it using the `head` function.
+head(pollster_results)
+
+# Add a logical variable called `hit` that indicates whether the actual value exists within the confidence interval of each poll. Summarize the average `hit` result to determine the proportion of polls with confidence intervals include the actual value. Save the result as an object called `avg_hit`.
+avg_hit <- pollster_results %>% mutate(hit= (lower <= 0.482 & upper >= 0.482)) %>% summarize(mean(hit))
+avg_hit
+
+
+4.
+If these confidence intervals are constructed correctly, and the theory holds up, what proportion of confidence intervals should include p?
+0.95
+
+5.
+A much smaller proportion of the polls than expected produce confidence intervals containing p. Notice that most polls that fail to include p are underestimating. The rationale for this is that undecided voters historically divide evenly between the two main candidates on election day.
+In this case, it is more informative to estimate the spread or the difference between the proportion of two candidates d, or 0.482-0.461=0.021 for this election.
+Assume that there are only two parties and that d=2p-1. Construct a 95% confidence interval for difference in proportions on election night.
+Use the mutate function to define a new variable called 'd_hat' in polls. The new variable subtract the proportion of Trump voters from the proportion of Clinton voters.
+Extract the sample size N from the first poll in your subset object polls.
+Extract the difference in proportions of voters d_hat from the first poll in your subset object polls.
+Use the formula above to calculate p from d_hat. Assign p to the variable X_hat.
+Find the standard error of the spread given N.
+Calculate the 95% confidence interval of this estimate of the difference in proportions, d_hat, using the qnorm function.
+Save the lower and upper confidence intervals as an object called ci. Save the lower confidence interval first.
+# Add a statement to this line of code that will add a new column named `d_hat` to `polls`. The new column should contain the difference in the proportion of voters.
+head(polls_us_election_2016, 1)
+polls <- polls_us_election_2016 %>% filter(enddate >= "2016-10-31" & state == "U.S.") %>% mutate(d_hat=(rawpoll_clinton/100 - rawpoll_trump/100))
+
+# Assign the sample size of the first poll in `polls` to a variable called `N`. Print this value to the console.
+N <- polls$samplesize[n=1]
+N
+
+# For the difference `d_hat` of the first poll in `polls` to a variable called `d_hat`. Print this value to the console.
+d_hat <- polls$d_hat[n=1]
+d_hat
+
+# Assign proportion of votes for Clinton to the variable `X_hat`.
+X_hat<-(d_hat+1)/2
+X_hat
+
+# Calculate the standard error of the spread and save it to a variable called `se_hat`. Print this value to the console.
+se_hat <-2* sqrt(X_hat*(1-X_hat)/N)
+se_hat
+
+
+# Use `qnorm` to calculate the 95% confidence interval for the difference in the proportions of voters. Save the lower and then the upper confidence interval to a variable called `ci`.
+ci <- c(d_hat - qnorm(.975) * se_hat, d_hat + qnorm(.975) * se_hat)
+ci
+
+6.
+Create a new object called pollster_results that contains the pollster's name, the end date of the poll, the difference in the proportion of voters who declared a vote either, the standard error of this estimate, and the lower and upper bounds of the confidence interval for the estimate.
+Use the mutate function to define four new columns: 'X_hat', 'se_hat', 'lower', and 'upper'. Temporarily add these columns to the polls object that has already been loaded for you.
+In the X_hat column, calculate the proportion of voters for Clinton using d_hat.
+In the se_hat column, calculate the standard error of the spread for each poll using the sqrt function.
+In the lower column, calculate the lower bound of the 95% confidence interval using the qnorm function.
+In the upper column, calculate the upper bound of the 95% confidence interval using the qnorm function.
+Use the select function to select the columns from polls to save to the new object pollster_results.
+# The subset `polls` data with 'd_hat' already calculated has been loaded. Examine it using the `head` function.
+head(polls)
+
+# Create a new object called `pollster_results` that contains columns for pollster name, end date, d_hat, lower confidence interval of d_hat, and upper confidence interval of d_hat for each poll.
+pollster_results <- polls %>% mutate(d_hat=(rawpoll_clinton/100 - rawpoll_trump/100), X_hat=(d_hat+1)/2, se_hat=2*sqrt(X_hat*(1-X_hat)/polls$samplesize), lower = d_hat - qnorm(.975) * se_hat, upper = d_hat+qnorm(0.975)*se_hat) %>% select(pollster, enddate, d_hat, lower, upper)
+head(pollster_results ,1)
+
+
+7.
+
+
+8.
+
+
+9.

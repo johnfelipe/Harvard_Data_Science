@@ -1,0 +1,145 @@
+
+ggplot
+
+We can load ggplot2 package by loading it, along with dplyr, and other useful package, by loading the tidyverse 
+library.
+> library(tidyverse)
+
+One limitation is that ggplot is assigned to work exclusively with data tables.  In these data tables, rows have to 
+be observations and columns have to be variables.
+
+-------------------------------------------------------------------------------------------------------
+
+graph components
+
+main 3 components are : 
+1. data components (murders data table
+2. geometry components (scatter plot, bar plot, histograms, smooth densities, q-q plots, and block plots)
+3. aesthetic mapping components (x axis values are used to display population size and y axis values are used to
+display the total number of murders. Text is used to identify the states. And colors are used to denote the four 
+different regions)
+4. scale component (both x and y axis are on log scales)
+5. labels, title, legend, etc.
+
+-------------------------------------------------------------------------------------------------------
+
+Creating a New Plot
+
+To initiate an object:
+> ggplot(data = murders)
+
+We can also pipe the data, equivalent to above:
+> murders %>% ggplot()
+
+Now we assign it to object P
+> p <- ggplot(data = murders)
+> class(p)
+[1] "gg"	"ggplot"
+
+We see the class of p is a ggplot object.
+
+To render the plot:
+>print(p)
+
+or
+
+>p
+
+-------------------------------------------------------------------------------------------------------
+
+Assessment
+
+For this chapter, we will use height data collected by Francis Galton for his genetics studies. Here we just use height of the children in the dataset:
+
+library(HistData)
+data(Galton)
+x <- Galton$child
+
+Compute the average and median of these data. Note: do not assign them to a variable.
+
+library(HistData)
+data(Galton)
+x <- Galton$child
+mean(x)
+median(x)
+
+
+
+Now for the same data compute the standard deviation and the median absolute deviation (MAD).
+Compute the standard deviation and the median absolute deviation of these data.
+library(HistData)
+data(Galton)
+x <- Galton$child
+sd(x)
+mad(x)
+
+
+
+
+In the previous exercises we saw that the mean and median are very similar and so are the standard deviation and MAD.
+This is expected since the data is approximated by a normal distribution which has this propoerty.
+
+Now suppose that suppose Galton made a mistake when entering the first value, forgetting to use the decimal point. 
+You can imitate this error by typing:
+
+library(HistData)
+data(Galton)
+x <- Galton$child
+x_with_error <- x
+x_with_error[1] <- x_with_error[1]*10
+The data now has an outlier that the normal approximation does not account for. Let's see how this affects the 
+average.
+
+Report how many inches the average grow after this mistake. Specifically, report the difference between the average 
+of the data with the mistake x_with_error and the data without the mistake x.
+
+library(HistData)
+data(Galton)
+x <- Galton$child
+x_with_error <- x
+x_with_error[1] <- x_with_error[1]*10
+mean(x_with_error) -mean(x)
+
+
+
+Report how many inches the SD grows after this mistake. Specifically, report the difference between the SD of the 
+data with the mistake x_with_error and the data without the mistake x.
+x_with_error <- x
+x_with_error[1] <- x_with_error[1]*10
+sd(x_with_error) - sd(x)
+
+
+
+Report how many inches the median grows after the mistake. Specifically, report the difference between the median
+of the data with the mistake x_with_error and the data without the mistake x.
+x_with_error <- x
+x_with_error[1] <- x_with_error[1]*10
+median(x_with_error) - median(x)
+[1] 0
+
+
+Report how many inches the MAD grows after the mistake. Specifically, report the difference between the MAD of the
+data with the mistake x_with_error and the data without the mistake x.
+x_with_error <- x
+x_with_error[1] <- x_with_error[1]*10
+mad(x_with_error) - mad(x)
+[1] 0
+
+
+
+We have seen how the average can be affected by outliers. But how large can this effect get? This of course depends 
+on the size of the outlier and the size of the dataset.
+
+To see how outliers can affect the average of a dataset, let's write a simple function that takes the size of the 
+outlier as input and returns the average.
+
+Write a function called error_avg that takes a value k and returns the average of the vector x after the first entry 
+changed to k. Show the results for k=10000 and k=-10000.
+
+x <- Galton$child
+error_avg <- function(k){
+  x[1] <- k
+  mean(x)
+}
+error_avg(10000)
+error_avg(-10000)

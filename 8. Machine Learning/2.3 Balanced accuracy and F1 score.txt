@@ -1,0 +1,114 @@
+Balanced accuracy and F1 score
+
+OK.
+Let's look at another metric.
+Although in general we recommend studying both specificity
+and sensitivity, very often it is useful to have a one number summary, for example, for optimization purposes.
+One metric that is preferred over overall accuracy is the average of specificity and sensitivity,
+referred to as the "balanced accuracy".
+Because specificity and sensitivity are raised,
+it is more appropriate to compute the "harmonic average" of specificity and sensitivity like this.
+
+F1-score
+
+1/ (1/2 ( 1/recall + 1/precision))
+
+In fact, the F1 score, a widely used one number summary, is the harmonic average of precision and recall.
+Because it is easy to write, you often see this harmonic average written like this.
+
+2 ((precision * recall)/(precision + recall))
+
+All right.
+Let's discuss some other considerations.
+Note that depending on the context, some types of errors are more costly than others.
+For example, in the case of plane safety, it is much more important to maximize sensitivity over specificity.
+Failing to predict a plane will malfunction before it crashes is a much more costly error than grounding
+a plane when in fact the plane is in perfect condition.
+In a capital murder criminal case, the opposite is true, since a false positive can lead to killing an innocent person.
+The F1 score can be adopted to weigh specificity and sensitivity differently.
+To do this, we define beta to represent how much more important sensitivity is
+compared to specificity, and consider a weighted harmonic average using this formula.
+
+1 / ( (B^2/1+B^2)*(1/recall) + (1/1+B^2)*(1/precision) )
+
+The F_meas function in the cara package computes the summary with beta defaulting to one.
+So let's rebuild our prediction algorithm,
+but this time maximizing the F score instead of overall accuracy.
+We can do that by just editing the code and using this instead.
+
+> cutoff <- seq(61, 70)
+> F_1 <- map_dbl(cutoff, function(x) {
+  y_hat <- ifelse(train_set$height > x , "Male", "Female") %>%
+    factor(levels = levels(test_set$sex))
+  F_meas(data = y_hat, reference = factor(train_set$sex))
+})
+
+
+As before, we can plot the F1 measure versus the different cutoffs.
+
+> data.frame(F_1 = F_1,
+           cutoff = cutoff) %>%
+  ggplot(aes(y = F_1, x = cutoff)) +
+  geom_line() +
+  geom_point()
+
+And we see that it is maximized at 61% when we use a cutoff of 66 inches.
+
+> max(F_1)
+> best_cutoff <- cutoff[which.max(F_1)]
+> best_cutoff
+
+A cutoff of 66 inches makes much more sense than 64.
+
+Furthermore, it balances the specificity and sensitivity of our confusion matrix as seen here.
+
+
+> y_hat <- ifelse(test_set$height > best_cutoff, "Male", "Female") %>% factor(levels = levels(test_set$sex))
+> confusionMatrix(data = y_hat, reference = test_set$sex)
+
+We now see that we do much better than guessing,
+and that both sensitivity and specificity are relatively high.
+We have built our first machine learning algorithm.
+It takes height as a predictor, and predicts
+female if you are 66 inches or shorter.
+
+
+------------------------------------------------------------------------------------------------------------
+
+
+Prevalence matters in practice
+
+A machine learning algorithm with very high sensitivity and specificity may not be useful in practice
+when prevalence is close to either 0 or 1.
+To see this, consider the case of a doctor that specializes in a rare disease and is
+interested in developing an algorithm to predict who has the disease.
+The doctor shares data with you, and you develop an algorithm with very high sensitivity.
+You explain that this means that "if a patient has a disease, the algorithm is very likely to predict correctly."
+You also tell the doctor that you are also concerned because based on the data set you analyzed,
+about half the patients have the disease, the probability of Y hat equals was 1/2.
+
+Pr(Y^ = 1) = 1/2
+
+The doctor is neither concerned nor impressed and explains that what is important is the precision of the test,
+the probability of y equals 1 given that Y hat equals 1.
+
+Pr(Y = 1 | Y^ = 1)
+
+Using Bayes' theorem, we can connect the two measures.
+The probability of Y equals given Y hat equals 1 equals the probably of Y
+hat equals 1 given Y equals 1 times the probability of Y equals 1 divided by the probability of Y hat being equal to 1.
+
+Pr(Y | Y^=1) = Pr(Y^=1 | Y = 1) (Pr(Y=1)/Pr(Y^=1))
+
+The doctor knows that the prevalence of the disease is 5 in 1,000.
+The prevalence of the disease in your data set was 50%.
+This implies that that ratio, the probability of Y equals 1 
+divided by the proportion of Y hat equals 1 is about 1 in 100.
+
+Pr(Y = 1)/ Pr(Y^ = 1) = 1/100
+
+And therefore, the position of your algorithm is less than 0.01.
+
+precision < 0.01
+
+The doctor does not have much use for your algorithm.

@@ -1,0 +1,181 @@
+
+Importing Spreadsheets
+
+readr 
+readxl
+
+---------------------------------------------------------------------------
+
+Paths and the working directory
+
+You can see your working directory by typing the following command--
+getwd()
+
+You can change a working directory using the function 
+setwd()
+
+Note that one thing that file reading functions have in common
+is that unless a full path is provided, they search for files in the working directory.
+
+For this reason, our recommended approach for beginners
+is that you create a directory for each analysis and keep the raw data files in that directory.
+
+To keep raw data files organized, we recommend creating a data directory inside your project
+directory, especially when the project involves more than one data file.
+
+Because you may not have a data file handy yet, we provide an example data file in the DSLABs package.
+Once you download and install that the DSLABS package, files will be in the external data, extdata, directory
+that you can get by typing this command.
+
+> system.file("extdata", package="dslabs")
+
+Note that the output of this function call will change depending on your operating system, how
+you installed R, and the version of R. But it will be consistent within your system.
+And you'll be able to see the files included in this directory using the function list.files(), like this.
+
+> path <- system.file("extdata", package="dslabs")
+> list.files(path)
+
+Note that using paste is not recommended since Microsoft Windows, and Mac, Linux, Unix, use different slashes for paths.
+The function file.path is aware of your system and chooses the correct slashes.
+
+> filename <- murders.csv
+> fullpath <- file.path(path, filename)
+> fullpath
+
+You can now copy the file over to your working directory using the file.copy function, like this.
+
+> file.copy(fullpath, getwd())
+[1] TRUE
+
+You can check of the file is now in your working directory using the file.exist function, like this.
+> file.exists(filename)
+[1] TRUE
+
+
+-----------------------------------------------------------------------------------------------------
+
+The readr and readxl Packages
+
+
+readr is the tidyverse library that includes functions for reading data stored in text file spreadsheets into r.
+
+The following functions are available to read in spreadsheet files--
+read_table	white space separated values				txt
+read_csv	comma seaparated values					csv
+read_csv2	semicolon separated values				csv
+read_tsv	tab delimited separated values				tsv
+read_delim	general texxt file format, must define delimiter	txt
+
+The read_excel package provides functions to read in data in the Microsoft Excel format.
+read_excel	auto detect the format	xls, xlsx
+read_xls	original format		xls
+read_xlsx	new format		xlsx
+
+The function excel_sheets gives us the names of the sheets in an Excel file.
+
+These names can then be passed on to the sheet argument in the three functions
+that we just described to read in Excel files.
+
+
+To open the file to take a look or use functions such as read_lines that show us
+the first few lines of a file within r.
+> read_lines("murders.csv", n_max=3)
+
+We now know is is a CSV file with a header.  Now we read in the data into r.
+
+> dat <- read_csv(filename)
+
+or use full path like this:
+
+> dat <- read_csv(fullpath)
+
+Note that when we run these functions, we
+receive a message letting us know what data types were used for each column.
+Also note that that, the object that we just created by reading in the file,
+is a tibble with the content of the file.
+
+> head(dat)
+
+
+
+-------------------------------------------------------------------------------------
+
+Importing Data Using R-base Functions
+
+Note, that R:BASE also provides import functions-- we saw this earlier.
+These have similar names to those in the tidyverse, so don't be confused.
+We have read.table, read.csv, and read.delim, for example.
+
+read.fwf reads fixed-width files.
+
+There are a couple of important differences you should know about.
+To show this, we read the data using an R:BASE function.
+We call the object dat2, like this.
+
+> dat2 <- read.csv(filename)
+
+One difference is that now we have a data.frame, not a tibble.
+You can see it using the class function.
+
+> class(dat2)
+[1] "data.frame"
+
+The other difference is that the characters are converted to factors.
+> class(dat2$abb)
+[1] "factor"
+>class(dat2$region)
+[1] "factor"
+
+In the original file, there were characters.
+This can be avoided by setting the argument stringsAsFactors to FALSE.
+
+> dat2 <- read.csv(filename, stringsAsFactors = FALSE)
+> class(dat3$abb)
+
+----------------------------------------------------------------------------------
+
+Downloading Files from the Internet
+
+Another common place for data to result is on the internet.
+When these are data files, we can download them and then import them.
+Or we can read them indirectly from the web.
+
+For example, we know that because our DS lab package is on GitHub, the file we downloaded for the package has a URL.
+
+> url <- "https://raw.githubusercontent.com/rafalab/dslabs/master/inst/extdata/murders.csv"
+
+
+The read_csv file can read these files directly.
+> dat <- read_csv(url)
+Parsed with column specification:
+cols(
+	state = col_character(),
+	abb = col_character(),
+	region = col_character(),
+	population = col_integer(),
+	total = col_integer()
+)
+
+
+Now, if you want to have a local copy of the file, you can use the download.file function, like this.
+> download.file(url, "murders.csv")
+
+Two functions that are sometimes useful when downloading data from the internet
+are tempdir and tempfile.
+
+The first actually creates a directory with a name that is very unlikely not to be unique.
+
+Similarly, tempfile creates a character string, not a file, that is likely to be a unique file name.
+
+> tempfile()
+[1] "/var/folders/c8/_3bwm84s56d31pnyry1cp5xc0000gp/T//RtmpU3ycGS/file2a529004c88
+
+So as an example, we'll use these commands to download a file, give it a temporary name, read it in, and then erase
+the files that we downloaded.
+
+> tmp_filename <- tempfile() 
+> download.file(url, tmp_filename)
+> dat <- read_csv(tmp_filename)
+> file.remove(tmp_filename)
+

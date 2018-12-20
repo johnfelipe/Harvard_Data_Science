@@ -1,0 +1,162 @@
+Confusion Matrix
+
+
+We previously developed a decision rule
+that predicts male if the student is taller than 64 inches.
+Now, given that the average female is about 65 inches, this prediction rule seems wrong.
+What happened?
+If a student is the height of the average female,
+shouldn't we predict female?
+Generally speaking, overall accuracy can be a deceptive measure.
+To see this, we'll start by constructing what is referred to as the confusion
+matrix, which basically tabulates each combination of prediction and actual value.
+We can do this in R using the function table, like this.
+
+> table(predicted = y_hat, actual = test_set$sex)
+
+If we study this table closely, it reveals a problem.
+If we compute the accuracy separately for each sex, we get the following.
+
+
+> test_set %>% 
+  mutate(y_hat = y_hat) %>%
+  group_by(sex) %>%
+  summarize(accuracy = mean(y_hat == sex))
+  
+  
+We get that we get a very high accuracy for males, 93%, but a very low accuracy for females, 42%.
+There's an imbalance in the accuracy for males and females.
+Too many females are predicted to be male.
+In fact, we're calling close to half females males.
+How can our overall accuracy we so high, then?
+This is because of the prevalence.
+There are more males in the data sets than females.
+
+These heights were collected from three data science courses, two of which had more males enrolled.
+At the end, we got that 77% of the students were male.
+
+> prev <- mean(y == "Male")
+> prev
+
+So when computing overall accuracy, the high percentage of mistakes made for females is outweighted
+by the gains in correct calls for men.
+This can actually be a big problem in machine learning.
+If your training data is biased in some way, you are likely to develop an algorithm that are biased as well.
+The fact that we evaluated on a test set does not matter, because that test set was also derived
+from the original biased data set.
+This is one of the reasons we look at metrics other than overall accuracy when evaluating
+a machine learning algorithm.
+There are several metrics that we can use to evaluate an algorithm in a way
+that prevalence does not cloud our assessments.
+And these can all be derived from what is called the confusion matrix.
+A general improvement to using over accuracy is to study sensitivity and specificity separately.
+To define sensitivity and specificity, we need a binary outcome.
+When the outcomes are categorical, we can define these terms for a specific category.
+In the digits example, we can ask for the specificity
+in the case of correctly predicting 2 as opposed to some other digit.
+Once we specify a category of interest then
+we can talk about positive outcomes, when y is 1, and negative outcomes, when y is zero.
+In general, sensitivity is defined as the ability of an algorithm
+to predict a positive outcome when the actual outcome is positive.
+So we're going to call y hat equals 1 whenever y equals 1.
+
+Y^ = 1
+Y = 1
+
+Because an algorithm that calls everything positive,
+so it says y hat equals 1 no matter what, has perfect sensitivity,
+this metric on its own is not enough to judge an algorithm.
+For this reason, we also examine specificity, which is generally defined
+as the ability of an algorithm to not predict the positive, so y hat equals
+0, when the actual outcome is not a positive, y equals zero.
+
+Y^ = 0
+Y = 0
+
+We can summarize in the following way.
+High sensitivity means y equals 1 implies y hat equals 1.
+Y = 1 implies Y^ = 1
+
+High specificity means y equals 0 implies y hat equals 0.
+Y = 0 implies Y^ = 0
+
+Now there's another way to define specificity,
+and it's by the proportion of positive calls that are actually positive.
+So in this case, high specificity is defined as y hat equals 1 implies y equals 1.
+Y^ = 1 implies Y = 1
+
+
+To provide a precise definition, we name the four entries of the confusion matrix.
+
+			Actually Positive	Actually Negative
+Predicted Positive	True Positives (TP)	False Positives (FP)
+Predicted Negative	False Negatives (FN)	True Negatives (TN)
+
+
+
+So when an outcome that is actually positive is predicted as positive, we call this a true positive, TP for short.
+When an actually negative result is called positive,
+it's predictive positive, then we call it a false positive, or FP.
+When an actually positive result is predicted negative, we call it a false negative, or FN.
+And when it actually negative results get predicted as a negative, we call it a true negative, or TN.
+
+Now we can provide more specific definitions.
+Sensitivity is typically quantified by true positives divided
+by the sum of true positives plus false negatives, or the proportion
+of actual positives, the first column of the confusion matrix that are called positives.
+
+Sensitivity = TP/(TP + FN)
+
+
+This quantity is referred to as the true positive rate (TPR) or recall.
+Specificity is typically quantified as the true negatives divided
+by the sum of the two negatives plus the false positives, or the proportions
+
+Specificity = TN/(TN + FP)
+
+of negatives, the second column of our confusion matrix that are called negatives.
+This quantity is also called the true negative rate (TNR).
+Now there's another way of quantifying specificity, which 
+is the true positives divided by the sum of the true positives
+plus false positives, or the proportion of outcomes
+called positives, the first row of our confusion matrix, that are actually positives.
+
+Specificity = TP/(TP + FP)
+
+This quantity is referred to as precision, and also as the positive predictive value, PPV.
+Note that unlike the true positive rate and the true negative rate,
+precision depends on the prevalence, since higher prevalence implies
+you can get higher precision, even when guessing.
+
+The multiple names can be confusing, so we include a table to help us remember the terms.
+The table includes a column that shows the definition if we think of the proportions as probabilities.
+And here is that table.
+
+
+A measure of	Name 1		Name 2		Definition		Probability Representation
+Sensitivity	TPR		Recall		TP/(TP+FN)TP/(TP+FN)	Pr(Y=1|Y=1)Pr(Y^=1|Y=1)
+Specificity	TNR		1 minus false	TN/(TN+FP)TN/(TN+FP)	Pr(Y^=0|Y=0)
+				positive rate
+				(1-FPR)
+Specificity	PPV		Precision	TP/(TP+FP)TP/(TP+FP)	Pr(Y=1|Y^=1)
+
+
+
+The confusion matrix function in the Caret package
+computes all these metrics for us once we define what a positive is.
+The function expects factors as inputs, and the first level is considered the positive outcome, or y equals 1.
+In our example, female is the first level because it comes before male alphabetically.
+So if we type this line of code for our predictions,
+we get the confusion matrix information all given to us in one shot.
+
+> confusionMatrix(data = y_hat, reference = test_set$sex)
+
+
+We can see that the high overall accuracy is possible despite relatively low sensitivity.
+As we hinted at previously, the reason this happens is the low prevalence, 23%.
+The proportion of females is low.
+Because prevalence is low, failing to call actual females females, low sensitivity, does not lower the accuracy
+as much as it would have increased if incorrectly called males females.
+This is an example of why it is important to examine sensitivity and specificity, and not just accuracy.
+Before applying this algorithm to general data sets,
+we need to ask ourselves if prevalence will be the same in the real world.

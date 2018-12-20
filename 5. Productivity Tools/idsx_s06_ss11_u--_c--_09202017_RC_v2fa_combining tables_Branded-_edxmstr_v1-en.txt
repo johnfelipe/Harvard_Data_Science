@@ -1,0 +1,74 @@
+
+RAFAEL IRIZARRY: The information we need for a given analysis may not
+be in just one table.
+For example, when forecasting elections, we
+use the function left underscore join to combine
+the information from two tables.
+Here, we use a simple example to illustrate the general challenge
+of combining tables.
+Suppose we want to explore the relationship between population
+size for US states, which we have in this table,
+and electoral votes, which we have in this one.
+Notice that just joining these two tables together like this
+will not work since the order of the states is not quite the same.
+We can see this by typing this code.
+We see that the column names for the state names are not the same.
+The join functions in the dplyr package, which are based on the SQL joins,
+make sure that the tables are combined so that matching rows are together.
+The general idea is that one needs to identify
+one or more columns that contain the information needed
+to match the two tables.
+Then, a new table with the combined information is returned.
+Note what happens if we join the two tables by state using left join.
+The data has been successfully joined, and we can now
+make a plot to explore the relationship we're
+interested in by using this simple code.
+The plot shows that there is a relationship that's close to linear,
+with about two electoral votes for every million people.
+But with smaller states getting a higher ratio.
+Now, in practice, it is not always the case that each row in one table
+has a matching row in the other.
+For this reason, we have several different ways to join.
+To illustrate this challenge, we're going
+to take a subset of the two tables that we've been using.
+We're going to create two objects.
+Tab one is going to be a subset of our first table,
+and tab two is going to be a subset of our second table.
+However, the states contained in the two tables are going to differ.
+We're going to use these two tables as examples of the different join
+functions.
+Let's start with left join.
+Suppose we want a table like tab one, but adding
+electoral votes to whatever states we have available in tab one.
+For this, we use left join, with tab one as the first argument, like this.
+Note that NAs are added to two states in tab one
+that are not appearing in tab two.
+Also note that this function, as well as all the other joins,
+can receive the first argument through the pipe, like this.
+
+If instead of a table like tab one we want one like tab two,
+we can use the right join, like this.
+Notice that now the NAs are in the columns coming from tab one.
+Now, if we want to keep only the rows that have information in both tables,
+we use inner join.
+You can think of this as an intersection.
+So we type inner join tab one, tab two, and we get the following tables.
+You know that this one doesn't have NAs.
+Now, if you want to keep all the rows and fill in the missing parts with NAs,
+we can use full join.
+You can think of this as a union.
+The code is simply like this.
+There's two more join functions we're going to go over.
+They're a little bit different because they don't actually join the tables.
+Instead, they let you keep parts of one table,
+depending on what's in the other.
+The semi join function lets us keep the part of the first table for which we
+have information in the second.
+It does not add the columns of the second.
+You can see it by typing this.
+The function anti join is the opposite of semi join.
+It keeps the elements of the first table for which there
+is no information in the second.
+So if we type anti join tab one, tab two, we get this small little table.
+To learn more about how the joins work and to remember them,
+you can look at this diagram.

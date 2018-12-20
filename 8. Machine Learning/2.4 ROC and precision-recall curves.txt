@@ -1,0 +1,346 @@
+ROC and precision-recall curves
+
+When comparing two or more methods-- for example, guessing versus using a height cutoff in our
+predict sex with height example-- we looked at accuracy and F1.
+
+The second method, the one that used height, clearly outperformed.
+However, while for the second method we consider several cutoffs, for the first one we only considered one approach,
+guessing with equal probability.
+Note that guessing male with higher probability would give us higher accuracy due to the bias in the sample.
+You can see this by writing this code, which predicts male.
+
+p <- 0.9
+y_hat <- sample(c("Male", "Female"), length(test_index), replace = TRUE, prob=c(p, 1-p)) %>%
+  factor(levels = levels(test_set$sex))
+mean(y_hat == test_set$sex)
+
+By guessing 90% of the time, we make our accuracy go up to 0.72.
+But as previously described, this would come at a cost of lower sensitivity.
+The curves we describe in this video will help us see this.
+Note that for each of these parameters, we can get a different sensitivity and specificity.
+For this reason, a very common approach to evaluating methods is to compare them graphically by plotting both.
+
+A widely used plot that does this is the "receiver operating characteristic" or ROC curve.
+The ROC curve plus sensitivity, the true positive rate, versus one minus specificity, or the false positive rate.
+
+sensitivity (TPR) versus 1 - specificity (FPR)
+
+Here is an ROC curve for guessing sex, but using different probabilities of guessing male.
+
+probs <- seq(0, 1, length.out = 10)
+guessing <- map_df(probs, function(p){
+  y_hat <- 
+    sample(c("Male", "Female"), length(test_index), replace = TRUE, prob=c(p, 1-p)) %>% 
+    factor(levels = c("Female", "Male"))
+  list(method = "Guessing",
+       FPR = 1 - specificity(y_hat, test_set$sex),
+       TPR = sensitivity(y_hat, test_set$sex))
+})
+
+guessing %>% qplot(FPR, TPR, data =., xlab = "1 - Specificity", ylab = "Sensitivity")
+
+The ROC curve for guessing always looks like this, like the identity line.
+Note that a perfect algorithm would shoot straight to one
+and stay up there, perfect sensitivity for all values of specificity.
+So how does our second approach compare?
+We can construct an ROC curve for the height-based approach using this code.
+
+cutoffs <- c(50, seq(60,75), 80)
+height_cutoff <- map_df(cutoffs, function(x) {
+  y_hat <- ifelse(test_set$height > x, "Male", "Female") %>%
+    factor(levels = c("Female", "Male"))
+  list(method = "Height cutoff",
+       FPR = 1-specificity(y_hat, test_set$sex),
+       TPR = sensitivity(y_hat, test_set$sex))
+})
+
+By plotting both curves together, we are able to compare sensitivity for different values of specificity.
+
+bind_rows(guessing, height_cutoff) %>%
+  ggplot(aes(FPR, TPR, color = method)) +
+  geom_line() +
+  geom_point() +
+  xlab("1 - Specificity") +
+  ylab("Sensitivity")
+
+We can see that we obtain higher sensitivity with the height-based approach for all values of specificity, which
+imply it is, in fact, a better method.
+Note that when making ROC curves, it is often nice to add the cutoff used to the points.
+It would look like this.
+
+map_df(cutoffs, function(x){
+  y_hat <- ifelse(test_set$height > x, "Male", "Female") %>% 
+    factor(levels = c("Female", "Male"))
+   list(method = "Height cutoff",
+        cutoff = x, 
+        FPR = 1-specificity(y_hat, test_set$sex),
+        TPR = sensitivity(y_hat, test_set$sex))
+}) %>%
+  ggplot(aes(FPR, TPR, label = cutoff)) +
+  geom_line() +
+  geom_point() +
+  geom_text(nudge_y = 0.01)
+
+
+ROC curves are quite useful for comparing methods.
+However, they have one weakness, and it is that neither of the measures plotted depend on prevalence.
+In cases in which prevalence matters, we may instead make a precision recall plot.
+The idea is similar, but we instead plot precision against recall.
+
+guessing <- map_df(probs, function(p){
+  y_hat <- sample(c("Male", "Female"), length(test_index), 
+                  replace = TRUE, prob=c(p, 1-p)) %>% 
+    factor(levels = c("Female", "Male"))
+  list(method = "Guess",
+       recall = sensitivity(y_hat, test_set$sex),
+       precision = precision(y_hat, test_set$sex))
+})
+
+height_cutoff <- map_df(cutoffs, function(x){
+  y_hat <- ifelse(test_set$height > x, "Male", "Female") %>% 
+    factor(levels = c("Female", "Male"))
+  list(method = "Height cutoff",
+       recall = sensitivity(y_hat, test_set$sex),
+       precision = precision(y_hat, test_set$sex))
+})
+bind_rows(guessing, height_cutoff) %>%
+  ggplot(aes(recall, precision, color = method)) +
+  geom_line() +
+  geom_point()
+  
+
+Here's what the plot looks like comparing our two methods.
+From this plot, we immediately see that the precision of guessing is not high.
+This is because the prevalence is low.
+If we change positives to mean male instead of females,
+the ROC curve remains the same, but the precision recall plot changes.
+And it looks like this.
+
+guessing <- map_df(probs, function(p){
+  y_hat <- sample(c("Male", "Female"), length(test_index), replace = TRUE, 
+                  prob=c(p, 1-p)) %>% 
+    factor(levels = c("Male", "Female"))
+  list(method = "Guess",
+       recall = sensitivity(y_hat, relevel(test_set$sex, "Male", "Female")),
+       precision = precision(y_hat, relevel(test_set$sex, "Male", "Female")))
+})
+
+height_cutoff <- map_df(cutoffs, function(x){
+  y_hat <- ifelse(test_set$height > x, "Male", "Female") %>% 
+    factor(levels = c("Male", "Female"))
+  list(method = "Height cutoff",
+       recall = sensitivity(y_hat, relevel(test_set$sex, "Male", "Female")),
+       precision = precision(y_hat, relevel(test_set$sex, "Male", "Female")))
+})
+bind_rows(guessing, height_cutoff) %>%
+  ggplot(aes(recall, precision, color = method)) +
+  geom_line() +
+  geom_point()
+  
+----------------------------------------------------------------------------------------------------
+
+library(dslabs)
+library(dplyr)
+library(lubridate)
+
+data("reported_heights")
+
+dat <- mutate(reported_heights, date_time = ymd_hms(time_stamp)) %>%
+  filter(date_time >= make_date(2016, 01, 25) & date_time < make_date(2016, 02, 1)) %>%
+  mutate(type = ifelse(day(date_time) == 25 & hour(date_time) == 8 & between(minute(date_time), 15, 30), "inclass","online")) %>%
+  select(sex, type)
+
+y <- factor(dat$sex, c("Female", "Male"))
+x <- dat$type
+
+Q1
+
+What is the propotion of females in class and online? (That is, calculate the proportion of the in class students who are female and the proportion of the online students who are female.)
+
+dat %>% group_by(sex, type) %>% summarize(n = n())
+
+In class
+
+0.666
+  correct  
+ 
+Online
+
+0.378
+  correct  
+ 
+ 
+ 
+Q2
+
+If you used the type variable to predict sex, what would the prediction accuracy be?
+
+set.seed(2)
+test_index <- createDataPartition(y, times = 1, p = 0.5, list = FALSE)
+
+train_set <- dat[-test_index, ]
+test_set <- dat[test_index, ]
+
+
+y_hat <- ifelse(x == "inclass", "Female", "Male")
+y_hat
+
+mean(y_hat == y)
+
+0.633
+
+
+Q3
+
+Write a line of code using the table function to show the confusion matrix, assuming the prediction is y_hat and the truth is y.
+
+table(predicted = y_hat, actual = y)
+
+
+Q4
+
+What is the sensitivity of this prediction?
+
+Sensitivity = TP/(TP + FN)
+
+0.382
+
+
+Q5
+
+What is the specificity of this prediction?
+
+Specificity = TN/(TN + FP)
+
+0.841
+
+Q6
+
+What is the prevalence (% of females) in the dat dataset defined above?
+
+dat %>% count(sex)
+
+0.453
+
+------------------------------------------------------------------------------------------------------
+
+We will practice building a machine learning algorithm using a new dataset, iris, that provides multiple predictors for us to use to train. To start, we will remove the setosa species and we will focus on the versicolor and virginica iris species using the following code:
+
+library(caret)
+data(iris)
+iris <- iris[-which(iris$Species=='setosa'),]
+y <- iris$Species
+
+The following questions all involve work with this dataset.
+
+Q1
+
+First let us create an even split of the data into train and test partitions using createDataPartition. The code with a missing line is given below:
+
+set.seed(2)
+# line of code
+test <- iris[test_index,]
+train <- iris[-test_index,]
+Which code should be used in place of # line of code above?
+
+
+test_index <- createDataPartition(y,times=1,p=0.5,list=FALSE)
+
+
+Q2
+
+Next we will figure out the singular feature in the dataset that yields the greatest overall accuracy. You can use the code from the introduction and from Q1 to start your analysis.
+
+Using only the train iris data set, which of the following is the singular feature for which a smart cutoff (simple search) yields the greatest overall accuracy?
+
+Petal.Length correct
+
+
+Q3
+Using the smart cutoff value calculated on the training data, what is the overall accuracy in the test data?
+
+
+y_hat <- ifelse(x > 5, "virginica", "versicolor")%>%
+  factor(levels = levels(test$Species))
+
+mean(y == y_hat)
+
+0.9
+
+
+Q4
+Notice that we had an overall accuracy greater than 96% in the training data, but the overall accuracy was lower in the test data. This can happen often if we overtrain. In fact, it could be the case that a single feature is not the best choice. For example, a combination of features might be optimal. Using a single feature and optimizing the cutoff as we did on our training data can lead to overfitting.
+
+Given that we know the test data, we can treat it like we did our training data to see if the same feature with a different cutoff will optimize our predictions.
+
+Which feature best optimizes our overall accuracy?
+
+y_hat <- ifelse(iris$Petal.Width > 1.8 , "virginica", "versicolor")%>%
+  factor(levels = levels(test$Species))
+
+mean(y == y_hat)
+
+Petal.Width correct
+
+
+Q5
+Now we will perform some exploratory data analysis on the data.
+
+Notice that Petal.Length and Petal.Width in combination could potentially be more information than either feature alone.
+
+Optimize the combination of the cutoffs for Petal.Length and Petal.Width in the train data and report the overall accuracy when applied to the test dataset. For simplicity, create a rule that if either the length OR the width is greater than the length cutoff or the width cutoff then virginica or versicolor is called. (Note, the F1 will be similarly high in this example.)
+
+What is the overall accuracy for the test data now?
+
+
+
+
+cutoff_width <- sort(train$Petal.Width)
+cutoff_length <- sort(train$Petal.Length)
+
+accuracy <- map2_dbl(cutoff_length, cutoff_width, function(x, y) {
+    y_hat <- ifelse(train$Petal.Width > y | train$Petal.Length > x, "virginica","versicolor") %>%
+      factor(levels = levels(train$Species))
+    mean(y_hat == train$Species)
+})
+
+max(accuracy)
+
+cutoff_width[which.max(accuracy)]
+cutoff_length[which.max(accuracy)]
+
+
+y_hat <- ifelse(test$Petal.Width > 1.5 & test$Petal.Length > 4.8, "virginica","versicolor") %>%
+  factor(levels = levels(test$Species))
+mean(y_hat == test$Species)
+
+
+
+
+
+library(caret)
+data(iris)
+iris <- iris[-which(iris$Species=='setosa'),]
+y <- iris$Species
+
+plot(iris,pch=21,bg=iris$Species)
+
+set.seed(2)
+test_index <- createDataPartition(y,times=1,p=0.5,list=FALSE)
+test <- iris[test_index,]
+train <- iris[-test_index,]
+
+petalLengthRange <- seq(range(train[,3])[1],range(train[,3])[2],by=0.1)
+petalWidthRange <- seq(range(train[,4])[1],range(train[,4])[2],by=0.1)
+cutoffs <- expand.grid(petalLengthRange,petalWidthRange)
+
+id <- sapply(seq(nrow(cutoffs)),function(i){
+	y_hat <- ifelse(train[,3]>cutoffs[i,1] | train[,4]>cutoffs[i,2],'virginica','versicolor')
+	mean(y_hat==train$Species)
+	}) %>% which.max
+
+optimalCutoff <- cutoffs[id,] %>% as.numeric
+y_hat <- ifelse(test[,3]>optimalCutoff[1] & test[,4]>optimalCutoff[2],'virginica','versicolor')
+mean(y_hat==test$Species)
+
+0.92
